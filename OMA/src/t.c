@@ -9,6 +9,6 @@
 #include <stdlib.h>
 
 int main(void) {
-	puts("La mamma di Nicola\n"); /* prints !!!Hello World!!! */
+	puts("La mamma di samu è una mignotta\n"); /* prints !!!Hello World!!! */
 	return EXIT_SUCCESS;
 }
