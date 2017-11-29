@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "samucoglione.h"
+#include "OMA_libraries/samucoglione.h"
 
 int main(void) {
 	puts("La mamma di samu è una mignotta\n"); /* prints !!!Hello World!!! */
