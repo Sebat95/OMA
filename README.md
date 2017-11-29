@@ -1,4 +1,6 @@
-# OMA
-OMA 2017/18 assignment
+# OMA #
+OMA 2017/18 assignment 
 
-just trying
+Group 21 
+
+	Finally something _should_ work
