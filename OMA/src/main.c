@@ -4,12 +4,12 @@
  *  Created on: 02 dic 2017
  *      Author: Nicola
  */
-
-#define DEBUG
+#define PRINT_DEBUG_INFO
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "OMA_libraries\method1.h"
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P, int ***conflictual_students_P);
 
@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 	int **n; // n[i,j] is the number of students enrolled in exams i and j (conflictual)
 
 	int *students_per_exam; // number of students enrolled in each exam
-	int **conflictual_students; // ExE matrix which specify the number of conflictual students between two exams
+	int **conflictual_students; // ExE matrix which specifies the number of conflictual students between two exams
 	/**********************************
 		 * NOTA: dai dati che ci da Manerba, potremmo salvare anche a che esami è iscritto
 		 * ogni studente, usando quest'informazione per migliorare la soluzione iniziale/generazione del neighborhood
@@ -38,6 +38,8 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 	int *x; // x[i] = timeslot of exam i
 
 	setup(instance_name, &T, &E, &S, &n, &x, &students_per_exam, &conflictual_students);
+
+	solveMethod1(x, T, E, S, conflictual_students, students_per_exam, conflictual_students, instance_name);
 
 	return 0;
 }
@@ -53,7 +55,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	strcpy(line, instance_name);
 	if((fp = fopen(strcat(line, ".slo"), "r")) == NULL)
 	{
-		fprintf(stdout, "Errore: file %s.slo non trovato.", instance_name);
+		fprintf(stdout, "Error: file %s.slo not found.", instance_name);
 		return;
 	}
 	fscanf(fp, "%d", T_P);
@@ -63,7 +65,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	strcpy(line, instance_name);
 	if((fp = fopen(strcat(line, ".exm"), "r")) == NULL)
 	{
-		fprintf(stdout, "Errore: file %s.exm non trovato.", instance_name);
+		fprintf(stdout, "Error: file %s.exm not found.", instance_name);
 		return;
 	}
 	i = 0;
@@ -85,7 +87,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	strcpy(line, instance_name);
 	if((fp = fopen(strcat(line, ".stu"), "r")) == NULL)
 	{
-		fprintf(stdout, "Errore: file %s.stu non trovato.", instance_name);
+		fprintf(stdout, "Error: file %s.stu not found.", instance_name);
 		return;
 	}
 	while(fgets(line, 99, fp) != NULL)
@@ -120,8 +122,9 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 			}
 		}
 	}
-	#ifdef DEBUG
-
+#ifdef PRINT_DEBUG_INFO
+	fprintf(stdout, "Number of exams: %d\n", *E_P);
+	fprintf(stdout, "Number of timeslots: %d\n", *T_P);
 	fprintf(stdout, "Students per exam:\n");
 	for(i=0; i<*E_P; i++)
 		fprintf(stdout, "Exam %d: students %d\n", i+1, (*students_per_exam_P)[i]);
@@ -135,7 +138,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	}
 
 
-	#endif
+#endif
 
 	for(i=0; i<S; i++)
 		free(enrolled_stud[i]); // not useful anymore
