@@ -4,7 +4,7 @@
  *  Created on: 02 dic 2017
  *      Author: Nicola
  */
-#define PRINT_DEBUG_INFO
+#define DEBUG_METHOD1
 
 #include "method1.h"
 #include "initialization.h"
@@ -14,7 +14,7 @@ void solveMethod1(int *x, int T, int E, int S, int **n, int *students_per_exam, 
 {
 	initializationGraphColoring(x, n, E, T);
 
-#ifdef PRINT_DEBUG_INFO
+#ifdef DEBUG_METHOD1
 		int i;
 		fprintf(stdout, "\nInitial solution:\n");
 		for(i=0; i<E; i++)

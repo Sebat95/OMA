@@ -4,7 +4,7 @@
  *  Created on: 02 dic 2017
  *      Author: Nicola
  */
-#define PRINT_DEBUG_INFO
+#define DEBUG_MAIN
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -124,7 +124,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 			}
 		}
 	}
-#ifdef PRINT_DEBUG_INFO
+#ifdef DEBUG_MAIN
 	fprintf(stdout, "Number of exams: %d\n", *E_P);
 	fprintf(stdout, "Number of timeslots: %d\n\n", *T_P);
 	fprintf(stdout, "Students per exam:\n");

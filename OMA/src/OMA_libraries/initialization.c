@@ -4,6 +4,8 @@
  *  Created on: 03 dic 2017
  *      Author: Nicola
  */
+#define DEBUG_INITIALIZATION
+
 #include "initialization.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -29,7 +31,7 @@ void initializationGraphColoring(int *x, int **n, int E, int T)
 				break;
 		if(j == T)
 		{
-			#ifdef DEBUG
+			#ifdef DEBUG_INITIALIZATION
 				fprintf(stdout, "No feasible solution does exist.\n");
 			#endif
 			for(j=0; j<E; j++)
