@@ -35,7 +35,7 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 	 */
 
 	// DECISION VARIABLES
-	int *x; // x[i] = timeslot of exam i
+	int *x; // x[i] = timeslot of exam i-1
 
 	setup(instance_name, &T, &E, &S, &n, &x, &students_per_exam, &conflictual_students);
 
@@ -71,6 +71,8 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	i = 0;
 	while(fgets(line, 99, fp) != NULL)
 		i++;
+	if (!(strcmp(line, "\n"))) //avoid reading extra the line at the end of every .exm file
+		i--;
 	*E_P = i;
 	*students_per_exam_P = malloc(*E_P * sizeof(int));
 	rewind(fp);
@@ -124,11 +126,11 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	}
 #ifdef PRINT_DEBUG_INFO
 	fprintf(stdout, "Number of exams: %d\n", *E_P);
-	fprintf(stdout, "Number of timeslots: %d\n", *T_P);
+	fprintf(stdout, "Number of timeslots: %d\n\n", *T_P);
 	fprintf(stdout, "Students per exam:\n");
 	for(i=0; i<*E_P; i++)
 		fprintf(stdout, "Exam %d: students %d\n", i+1, (*students_per_exam_P)[i]);
-	fprintf(stdout, "Conflictual students:\n");
+	fprintf(stdout, "\nConflictual students:\n");
 	for(i=0; i<*E_P; i++)
 	{
 		fprintf(stdout, "Exam %d:", i+1);
