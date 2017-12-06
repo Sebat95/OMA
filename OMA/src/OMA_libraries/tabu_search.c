@@ -10,11 +10,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// DATA STRUCTURES **********************
 
 typedef struct fifo_node_struct
 {
 	int x, y; // elements that have been swapped
-	struct fifo_node* next;
+	struct fifo_node_struct* next;
 }FIFO_node;
 
 typedef struct fifo_struct
@@ -32,6 +33,15 @@ typedef struct tabulist_struct
 	//unsigned char dynamic; // boolean specifying if tabu list length is dynamically changing
 }TabuList;
 
+// PROTOTYPES (not already in the header file, thus static) ******************
+
+static FIFO* new_FIFO(int length);
+static int match_FIFO(FIFO* fifo, int x, int y);
+static void insert_FIFO(FIFO* fifo, int x, int y);
+static void free_FIFO(FIFO* fifo);
+
+// DEFINITIONS ************************
+
 TabuList* new_TabuList(int length)//, int iteration, int iteration_to_increase, unsigned char dynamic)
 {
 	TabuList* tl = malloc(sizeof(TabuList));
@@ -44,11 +54,17 @@ TabuList* new_TabuList(int length)//, int iteration, int iteration_to_increase, 
 }
 int check_TabuList(TabuList* tl, int x, int y)
 {
-	return match_FIFO(tl->fifo_queue, x, y);
+	return match_FIFO(tl->fifo_queue, x, y); // if the action is not swap
+	//return match_FIFO(tl->fifo_queue, x, y) || match_FIFO(tl->fifo_queue, y, x); // because we're swapping
 }
 void insert_TabuList(TabuList* tl, int x, int y) // NOTE: x and y will be swapped (to forbid the opposite action)
 {
 	insert_FIFO(tl->fifo_queue, y, x);
+}
+void delete_TabuList(TabuList* tl)
+{
+	free_FIFO(tl->fifo_queue);
+	free(tl);
 }
 
 // FIFO ***** (POTREI FARE UNA LIBRERIA A PARTE MA VEDIAMO SE EFFETTIVAMENTE LA USEREMMO IN ALTRI MODI)
@@ -75,6 +91,7 @@ static int match_FIFO(FIFO* fifo, int x, int y)
 	{
 		if(pointer->x == x && pointer->y == y)
 			return 1; //match found
+		pointer = pointer->next;
 	}
 	return 0; //match not found
 }
@@ -87,4 +104,14 @@ static void insert_FIFO(FIFO* fifo, int x, int y) // remove the head, insert on 
 	pointer->next = fifo->head;
 	fifo->head = fifo->head->next; // the new head is the second node
 	pointer->next->next = NULL; //the last head is the tail now, so I update his next
+}
+static void free_FIFO(FIFO* fifo)
+{
+	FIFO_node *pointer = fifo->head;
+	while(pointer != NULL)
+	{
+		pointer = pointer->next;
+		free(pointer);
+	}
+	free(fifo);
 }

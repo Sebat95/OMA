@@ -8,10 +8,11 @@
 #ifndef SRC_OMA_LIBRARIES_TABU_SEARCH_H_
 #define SRC_OMA_LIBRARIES_TABU_SEARCH_H_
 
-typedef struct TabuList* TABU;
+typedef struct tabulist_struct* TABU;
 
 TABU new_TabuList(int length);//, int iteration, int iteration_to_increase, unsigned char dynamic);
-int check_TabuList(TABU tl, int x, int y);
+int check_TabuList(TABU tl, int x, int y); // return 0 if the action is allowed
 void insert_TabuList(TABU tl, int x, int y); // NOTE: x and y will be swapped (to forbid the opposite action)
+void delete_TabuList(TABU tl); // free the heap
 
 #endif /* SRC_OMA_LIBRARIES_TABU_SEARCH_H_ */
