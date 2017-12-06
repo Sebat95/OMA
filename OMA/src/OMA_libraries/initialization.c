@@ -6,6 +6,9 @@
  */
 #define DEBUG_INITIALIZATION
 
+#define RANDOMNESS 0.4
+#define TABU_LENGTH 10
+
 #include "initialization.h"
 #include "tabu_search.h"
 #include <stdlib.h>
@@ -81,7 +84,7 @@ void initialization(int *x, int **n, int E, int T)
 static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T)
 {
 	int i, j, found = 0, to_swap, candidate_timeslot;
-	TABU tl = new_TabuList(10);
+	TABU tl = new_TabuList(TABU_LENGTH);
 	Conflict conflict_for_timeslot[T];
 
 	for(i=0; i<T; i++)
@@ -96,13 +99,22 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 		fprintf(stdout, "\n");
 
 		///* QUESTO MODO DI GENERARE IL VICINATO FORSE NON FUNZIONA
+		//for(candidate_timeslot = to_swap-1; to_swap != candidate_timeslot; to_swap = (to_swap+1) % E) // scan exams in a circular way
+		//	if(x[to_swap] >= T) // unavailable timeslot
+		//		break;
+		//if(to_swap==candidate_timeslot) // feasible initial solution found
+		//	break;
+		// now to_swap specifies the exam that is in a not available timeslot, that we want to swap
+		to_swap = rand() % E;
 		for(candidate_timeslot = to_swap-1; to_swap != candidate_timeslot; to_swap = (to_swap+1) % E) // scan exams in a circular way
-			if(x[to_swap] >= T) // unavailable timeslot
-				break;
+		{
+			for(i=0; i<E; i++)
+				if(x[to_swap] == x[i] && n[to_swap][i])
+					break; // to_swap is in conflict with an exam in the same timeslot
+			if(i != E) break;
+		}
 		if(to_swap==candidate_timeslot) // feasible initial solution found
 			break;
-		// now to_swap specifies the exam that is in a not available timeslot, that we want to swap
-
 
 		for(i=0; i<T; i++) // SI PUO' FARE PIù EFFICIENTEMENTE IN QUALCHE MODO? cosi ogni neighborhood costa O(T*E)
 			for(j=0; j<E; j++)
@@ -113,7 +125,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 
 		for(i=0; i<T && !found; i++)
 		{
-			if(rand()/(double)RAND_MAX < 0.1)
+			if(rand()/(double)RAND_MAX < RANDOMNESS)
 				continue;
 			candidate_timeslot = conflict_for_timeslot[i].timeslot; // candidate_timeslot is the candidate_timeslot timeslot
 			for(j=0; j<E && !found; j++)
@@ -143,8 +155,8 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 		}
 		found = 0;
 
-		/* TENTATIVO BANALE
-		to_swap = rand() % E;
+		//TENTATIVO BANALE
+/*		to_swap = rand() % E;
 				for(candidate_timeslot = to_swap-1; to_swap != candidate_timeslot; to_swap = (to_swap+1) % E) // scan exams in a circular way
 				{
 					for(i=0; i<E; i++)
@@ -154,7 +166,8 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 				}
 				if(to_swap==candidate_timeslot) // feasible initial solution found
 					break;
-		x[to_swap] = (x[to_swap]+1) % T; // PROVA CON NEIGHBORHOOD BANALE*/
+		x[to_swap] = (x[to_swap]+1) % T; // PROVA CON NEIGHBORHOOD BANALE
+*/
 	}
 }
 int compare_conflict_increasing(const void* a, const void* b)
