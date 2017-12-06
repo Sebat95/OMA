@@ -8,6 +8,6 @@
 #ifndef SRC_OMA_LIBRARIES_INITIALIZATION_H_
 #define SRC_OMA_LIBRARIES_INITIALIZATION_H_
 
-void initializationGraphColoring(int *x, int **n, int E, int T);
+void initialization(int *x, int **n, int E, int T);
 
 #endif /* SRC_OMA_LIBRARIES_INITIALIZATION_H_ */

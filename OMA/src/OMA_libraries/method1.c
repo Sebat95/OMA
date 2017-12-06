@@ -12,7 +12,7 @@
 
 void solveMethod1(int *x, int T, int E, int S, int **n, int *students_per_exam, int **conflictual_students, char *instance_name)
 {
-	initializationGraphColoring(x, n, E, T);
+	initialization(x, n, E, T);
 
 #ifdef DEBUG_METHOD1
 		int i;
