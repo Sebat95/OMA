@@ -57,9 +57,10 @@ int check_TabuList(TabuList* tl, int x, int y)
 	return match_FIFO(tl->fifo_queue, x, y); // if the action is not swap
 	//return match_FIFO(tl->fifo_queue, x, y) || match_FIFO(tl->fifo_queue, y, x); // because we're swapping
 }
-void insert_TabuList(TabuList* tl, int x, int y) // NOTE: x and y will be swapped (to forbid the opposite action)
+void insert_TabuList(TabuList* tl, int x, int y)
 {
-	insert_FIFO(tl->fifo_queue, y, x);
+	//insert_FIFO(tl->fifo_queue, y, x); IN CERTI CASI BISOGNA METTERE IN ORDINE INVERSO (attualmente non lo uso cosi)
+	insert_FIFO(tl->fifo_queue, x, y);
 }
 void delete_TabuList(TabuList* tl)
 {
