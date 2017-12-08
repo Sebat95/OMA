@@ -6,8 +6,8 @@
  */
 #define DEBUG_INITIALIZATION
 
-#define RANDOMNESS 0.5
-#define TABU_LENGTH 150
+#define RANDOMNESS 0.4
+#define TABU_LENGTH 40
 
 #include "initialization.h"
 #include "tabu_search.h"
@@ -105,7 +105,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 	while(1)
 	{
 #ifdef DEBUG_INITIALIZATION
-		for(i=0;i<E;i++) fprintf(stdout, "%d ", x[i]);
+		for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
 		fprintf(stdout, "\n");
 #endif
 		// ****CERCO UN ESAME IN CONFLITTO CON UN ALTRO ESAME DELLO STESSO TIMESLOT
@@ -138,12 +138,13 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 			if(j == E)
 				break;
 		}*/
+
 		// TENTATIVO SCEGLIENDO TRA GLI ESAMI CON PIù CONFLITTI NEL CANDIDATE_TIMESLOT
 		for(i=0;i<E;i++) mark[i] = 0;
 		for(i=0;i<E;i++)
 			if(x[i] == candidate_timeslot)
 				for(j=0;j<E;j++)
-					if(x[j] == candidate_timeslot && j != to_swap && j!=i)
+					if(x[j] == candidate_timeslot && n[i][j] && j != to_swap && j!=i)
 					{
 						mark[i]++;
 						mark[j]++;
@@ -157,7 +158,37 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 		}
 		if(i==E || mark[i] == 0)
 			i = 0;
+		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, i);
+
+		/*// TENTATIVO SCEGLIENDO A CASO IN QUEL TIMESLOT
+		i = rand() % E;
+		for(j=0; j<E; j++)
+			if(x[(i+j)%E] == candidate_timeslot)
+				break;
+		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, (i+j)%E);
+		*/
+		/*// TENTATIVO COME QUELLO CON MENO CONFLITTI NEGLI ALTRI TIMESLOT
+		for(i=0;i<E;i++) mark[i] = 0;
+		for(i=0;i<E;i++)
+			if(x[i] == candidate_timeslot)
+				for(j=0;j<E;j++)
+					if(x[j] != candidate_timeslot && n[i][j] && j != to_swap && j!=i)
+					{
+						mark[i]++; //###@@@!!!!! E SE INVECE SEGNASSI QUANTI CONFLITTI HO NEGLI ALTRI TIMESLOT E PRENDESSI QUELLO CON MENO CONFLITTI?
+						mark[j]++;
+					}
+		qsort(mark, E, sizeof(int), compare_int_decreasing);
+		for(i=0;i<E && mark[i] > 0;i++)
+		{
+			if(rand()/(double)RAND_MAX < RANDOMNESS)
+				continue;
+			break;
+		}
+		if(i==E || mark[i] == 0)
+			i = 0;
 		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, mark[i]);
+		*/
+
 
 		/*for(i=0; i<T; i++)
 		{
