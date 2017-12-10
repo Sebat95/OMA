@@ -6,8 +6,8 @@
  */
 #define DEBUG_INITIALIZATION
 
-#define RANDOMNESS 0.4
-#define TABU_LENGTH 40
+#define RANDOMNESS 0.2
+#define TABU_LENGTH 5
 
 #include "initialization.h"
 #include "tabu_search.h"
@@ -23,49 +23,71 @@ typedef struct
 	int timeslot;
 	int conflict;
 }Conflict;
+typedef struct
+{
+	int exam;
+	double value;
+}Value;
 // PROTOTYPES (almost all static functions) ***************
 
 static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T);
+static void initializationMetaheuristic_tabuSearch2(int *x, int **n, int E, int T);
 static int insert_exam_in_better_timeslot(int *x, int **n, int E, int T, TABU tl, Conflict *conflict_for_timeslot, int to_swap);
 
 int compare_conflict_increasing(const void* a, const void* b);
 int compare_int_decreasing(const void* a, const void* b);
+int compare_Value_decreasing(const void* a, const void* b);
+
+static int count_number_conflicts(int *x, int **n, int E);
 // DEFINITIONS ***************************
 
 void initialization(int *x, int **n, int E, int T)
 {
-	int i, j, colors = T;
+	int i, j, greedy_successfull = 1;
+	Value rank[E]; // SFRUTTO QUELLO CHE USERO NELLA METAHEURISTICA, SE FUNZIONA RIORDINO STO SCHIFO
 	unsigned char *timeslots_not_available = calloc(T, sizeof(int)); // boolean array (1 means that the color is not available)
 
+	for(i=0; i<E; i++)
+	{
+		rank[i].exam = i; rank[i].value = 0;
+	}
+	for(i=0; i<E; i++)
+		for(j=0; j<E; j++)
+			if(n[i][j])
+			{
+				rank[i].value++; rank[j].value++;
+			}
+	qsort(rank, E, sizeof(Value), compare_Value_decreasing);
 	// GREEDY PART ************************
-	x[0] = 0; // put exam 0 in timeslot 0
+	x[rank[0].exam] = 0; // put exam 0 in timeslot 0
 	for(i=1; i<E; i++)
-		x[i] = -1; // reset other exams timeslots
+		x[rank[i].exam] = -1; // reset other exams timeslots
 
 	for(i=1; i<E; i++)
 	{
 		for(j=0; j<E; j++)
-			if(n[i][j] != 0 && x[j] != -1) // exam i and j in conflict and exam j color is fixed
+			if(n[rank[i].exam][j] != 0 && x[j] != -1) // exam i and j in conflict and exam j color is fixed
 				timeslots_not_available[x[j]] = 1; //exam j color is not available for exam i
 
-		for(j=0; j<colors; j++)
+		for(j=0; j<T; j++)
 			if(timeslots_not_available[j] == 0)
 				break;
-		if(j == colors)
+		if(j == T)
+		{
 			j = rand() % T;// OPPURE j--;
-			//colors++; // VERSIONE CHE USA TIMESLOT NON DISPONIBILIadd a "dummy" timeslot, that I will try to eliminate by means of metaheuristic
+			greedy_successfull = 0;
+		}
 
-		x[i] = j; // set exam i color to the first available color found
+		x[rank[i].exam] = j; // set exam i color to the first available color found
 
 		for(j=0; j<T; j++)
 			timeslots_not_available[j] = 0; //reset color array
 	}
 	free(timeslots_not_available);
+	if(greedy_successfull)
+		return;
 
-	/*if(colors <= T)
-		return; // feasible solution found by means of greedy algorithm
-	*/
-
+	fprintf(stdout, "Soluzione iniziale greedy con %d conflitti.\n", count_number_conflicts(x, n, E));
 	// METAHEURISTIC PART ***********************
 #ifdef DEBUG_INITIALIZATION
 	fprintf(stdout, "Greedy algorithm for the initialization didn't found a feasible solution.\nA metaheuristic is required.\n");
@@ -75,6 +97,7 @@ void initialization(int *x, int **n, int E, int T)
 	srand(time(NULL)); // NON DETERMINISMO: ogni esecuzione è diversa dalle altre
 	t1 = clock();
 	initializationMetaheuristic_tabuSearch(x, n, E, T);
+	//initializationMetaheuristic_tabuSearch2(x, n, E, T);
 	t2 = clock();
 
 	//check if the solution is correct
@@ -95,7 +118,75 @@ void initialization(int *x, int **n, int E, int T)
 	fprintf(stdout, "TEMPO RICHIESTO: circa %.5f secondi.\n", (t2 - t1) * (1.0 / CLOCKS_PER_SEC));
 	return;
 }
+static void initializationMetaheuristic_tabuSearch2(int *x, int **n, int E, int T)
+{
+	int i, j, k, found = 0, to_swap = -1, candidate_timeslot = 0, mark[E];
+	Value value[E];
+	TABU tl = new_TabuList(TABU_LENGTH);
+	Conflict *conflict_for_timeslot = calloc(T, sizeof(Conflict));
+	int conflict_for_timeslot_int[E][T];
+	for(i=0; i<E; i++)
+	{
+		value[i].exam = i; value[i].value = 0;
+		for(j=0; j<T; j++)
+			conflict_for_timeslot_int[i][j] = 0;
+	}
 
+	while(1)
+	{
+#ifdef DEBUG_INITIALIZATION
+		for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
+		fprintf(stdout, "\n");
+		fprintf(stdout, "Number of conflicts: %d.\n", count_number_conflicts(x, n, E));
+#endif
+
+		for(i=0; i<E; i++)
+		{
+			for(j=0; j<T; j++)
+				for(k=0; k<E; k++)
+					if(x[k] == j && n[k][i])
+					{
+						conflict_for_timeslot_int[i][j]++;
+						//if(conflict_for_timeslot_int[i][j] > value[i].value)
+						//	value[i].value = conflict_for_timeslot_int[i][j];
+						if(x[i] != j)
+							value[i].value++;
+					}
+			value[i].value = (conflict_for_timeslot_int[i][x[i]] == 0) ? 1 * value[i].value : conflict_for_timeslot_int[i][x[i]] * value[i].value; // value[i] = conflict where exam i is (minimum 1) * min conflicts in another timeslot
+		}
+
+		qsort(value, E, sizeof(Value), compare_Value_decreasing); // value[i]: the higher the better
+		while(to_swap == -1)
+			for(i=0; i<E; i++)
+			{
+				if(rand()/(double)RAND_MAX < RANDOMNESS)
+					continue;
+				to_swap = value[i].exam;
+				break;
+			}
+
+		for(i=0; i<T; i++)
+		{
+			conflict_for_timeslot[i].timeslot = i;
+			conflict_for_timeslot[i].conflict = conflict_for_timeslot_int[to_swap][i];
+		}
+
+		insert_TabuList(tl, to_swap, x[to_swap]);
+		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, to_swap);
+
+		//reset
+		found = 0;
+		to_swap = -1;
+		for(i=0; i<E; i++)
+		{
+			value[i].exam = i;
+			value[i].value = 0;
+			for(j=0; j<T; j++)
+				conflict_for_timeslot_int[i][j] = 0;
+		}
+	}
+	free(conflict_for_timeslot);
+}
 static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T)
 {
 	int i, j, found = 0, to_swap, candidate_timeslot = 0, mark[E];
@@ -105,8 +196,8 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 	while(1)
 	{
 #ifdef DEBUG_INITIALIZATION
-		for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
-		fprintf(stdout, "\n");
+		//for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
+		fprintf(stdout, "\nNumber of conflicts: %d.\n", count_number_conflicts(x, n, E));
 #endif
 		// ****CERCO UN ESAME IN CONFLITTO CON UN ALTRO ESAME DELLO STESSO TIMESLOT
 		to_swap = rand() % E; // start the scan from a random exam
@@ -269,4 +360,23 @@ int compare_conflict_increasing(const void* a, const void* b)
 int compare_int_decreasing(const void* a, const void* b)
 {
 	return *(int*) b - *(int*) a;
+}
+int compare_Value_decreasing(const void* a, const void* b)
+{
+	Value A = *(Value*)a, B = *(Value*) b;
+	float x = B.value - A.value;
+	if(x>0)
+		return 1;
+	if(x<0)
+		return -1;
+	return 0;
+}
+static int count_number_conflicts(int *x, int **n, int E)
+{
+	int i, j, conflicts = 0;
+	for(i=0; i<E; i++)
+		for(j=0; j<E; j++)
+			if(x[i] == x[j] && n[i][j] && i != j)
+				conflicts++;
+	return conflicts;
 }
