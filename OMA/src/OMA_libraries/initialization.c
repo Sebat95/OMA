@@ -122,6 +122,10 @@ void initialization(int *x, int **n, int E, int T)
 			}
 	}
 	fprintf(stdout, "REQUIRED TIME: about %.3f seconds.\n", (t2 - t1) * (1.0 / CLOCKS_PER_SEC));
+
+	fprintf(stdout, "\nInitial solution:\n");
+	for(i=0; i<E; i++)
+		fprintf(stdout, "x[%d] = %d\n", i, x[i]);
 #endif
 
 	return;
