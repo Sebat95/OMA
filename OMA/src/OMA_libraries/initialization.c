@@ -14,7 +14,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <windows.h>
 
 // DATA STRUCTURES *************************
 
@@ -26,80 +25,87 @@ typedef struct
 typedef struct
 {
 	int exam;
-	double value;
+	int value;
 }Value;
+
 // PROTOTYPES (almost all static functions) ***************
 
-static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T);
-static void initializationMetaheuristic_tabuSearch2(int *x, int **n, int E, int T);
+static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T); // GRASP + TABU SEARCH
+
 static int insert_exam_in_better_timeslot(int *x, int **n, int E, int T, TABU tl, Conflict *conflict_for_timeslot, int to_swap);
-
-int compare_conflict_increasing(const void* a, const void* b);
-int compare_int_decreasing(const void* a, const void* b);
-int compare_Value_decreasing(const void* a, const void* b);
-
 static int count_number_conflicts(int *x, int **n, int E);
+	// compare functions for qsort
+static int compare_conflict_increasing(const void* a, const void* b);
+static int compare_int_decreasing(const void* a, const void* b);
+static int compare_Value_decreasing(const void* a, const void* b);
+
 // DEFINITIONS ***************************
 
 void initialization(int *x, int **n, int E, int T)
 {
 	int i, j, greedy_successfull = 1;
-	Value rank[E]; // SFRUTTO QUELLO CHE USERO NELLA METAHEURISTICA, SE FUNZIONA RIORDINO STO SCHIFO
-	unsigned char *timeslots_not_available = calloc(T, sizeof(int)); // boolean array (1 means that the color is not available)
+	Value* rank = malloc(E * sizeof(Value)); // sorting exam by conflicts with other deeply improves initial solution (without this, metaheuristic does not converge quickly for instance06)
+	unsigned char *timeslots_not_available = calloc(T, sizeof(int)); // boolean array (1 means that the timeslot is not available for a certain exam)
 
 	for(i=0; i<E; i++)
 	{
-		rank[i].exam = i; rank[i].value = 0;
+		rank[i].exam = i;
+		rank[i].value = 0;
 	}
 	for(i=0; i<E; i++)
 		for(j=0; j<E; j++)
-			if(n[i][j])
+			if(n[i][j]) // exam i and j in conflict
 			{
-				rank[i].value++; rank[j].value++;
+				rank[i].value++;
+				rank[j].value++;
 			}
-	qsort(rank, E, sizeof(Value), compare_Value_decreasing);
-	// GREEDY PART ************************
-	x[rank[0].exam] = 0; // put exam 0 in timeslot 0
-	for(i=1; i<E; i++)
-		x[rank[i].exam] = -1; // reset other exams timeslots
+	qsort(rank, E, sizeof(Value), compare_Value_decreasing); // sort exam by decreasing number of conflicts with other exams
 
+	// GREEDY PART ************************
+
+	x[rank[0].exam] = 0; // put first exam in timeslot 0 (or in any other timeslot)
 	for(i=1; i<E; i++)
+		x[rank[i].exam] = -1; // set other exams timeslots to an invalid value
+
+	for(i=1; i<E; i++) // for each exam (each cycle decide the timeslot for exam i)
 	{
-		for(j=0; j<E; j++)
-			if(n[rank[i].exam][j] != 0 && x[j] != -1) // exam i and j in conflict and exam j color is fixed
-				timeslots_not_available[x[j]] = 1; //exam j color is not available for exam i
+		for(j=0; j<E; j++) // for any other exam
+			if(n[rank[i].exam][j] != 0 && x[j] != -1) // exam rank[i].exam and j in conflict and exam j timeslot is already fixed
+				timeslots_not_available[x[j]] = 1; //exam j timeslot is not available for exam i
 
 		for(j=0; j<T; j++)
-			if(timeslots_not_available[j] == 0)
+			if(timeslots_not_available[j] == 0) // if it founds an available timeslot, break
 				break;
-		if(j == T)
+		if(j == T) // no available timeslot found
 		{
-			j = rand() % T;// OPPURE j--;
+			j = rand() % T; // no timeslot is available for exam rank[i].exam. Put a random timeslot (metaheuristic will fix it)
 			greedy_successfull = 0;
 		}
 
 		x[rank[i].exam] = j; // set exam i color to the first available color found
 
+		// reset
 		for(j=0; j<T; j++)
-			timeslots_not_available[j] = 0; //reset color array
+			timeslots_not_available[j] = 0; //reset not available timeslots array
 	}
 	free(timeslots_not_available);
-	if(greedy_successfull)
+	free(rank);
+
+	if(greedy_successfull) // greedy algorithm has found a feasible solution (no metaheuristic required)
 		return;
 
-	fprintf(stdout, "Soluzione iniziale greedy con %d conflitti.\n", count_number_conflicts(x, n, E));
 	// METAHEURISTIC PART ***********************
 #ifdef DEBUG_INITIALIZATION
+	fprintf(stdout, "Soluzione iniziale greedy con %d conflitti.\n", count_number_conflicts(x, n, E));
 	fprintf(stdout, "Greedy algorithm for the initialization didn't found a feasible solution.\nA metaheuristic is required.\n");
+	clock_t t1, t2;
+	t1 = clock();
 #endif
 
-	clock_t t1, t2;
-	srand(time(NULL)); // NON DETERMINISMO: ogni esecuzione è diversa dalle altre
-	t1 = clock();
 	initializationMetaheuristic_tabuSearch(x, n, E, T);
-	//initializationMetaheuristic_tabuSearch2(x, n, E, T);
-	t2 = clock();
 
+#ifdef DEBUG_INITIALIZATION
+	t2 = clock();
 	//check if the solution is correct
 	for(i=0; i<E; i++)
 	{
@@ -115,83 +121,18 @@ void initialization(int *x, int **n, int E, int T)
 				break;
 			}
 	}
-	fprintf(stdout, "TEMPO RICHIESTO: circa %.5f secondi.\n", (t2 - t1) * (1.0 / CLOCKS_PER_SEC));
-	return;
-}
-static void initializationMetaheuristic_tabuSearch2(int *x, int **n, int E, int T)
-{
-	int i, j, k, found = 0, to_swap = -1, candidate_timeslot = 0, mark[E];
-	Value value[E];
-	TABU tl = new_TabuList(TABU_LENGTH);
-	Conflict *conflict_for_timeslot = calloc(T, sizeof(Conflict));
-	int conflict_for_timeslot_int[E][T];
-	for(i=0; i<E; i++)
-	{
-		value[i].exam = i; value[i].value = 0;
-		for(j=0; j<T; j++)
-			conflict_for_timeslot_int[i][j] = 0;
-	}
-
-	while(1)
-	{
-#ifdef DEBUG_INITIALIZATION
-		for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
-		fprintf(stdout, "\n");
-		fprintf(stdout, "Number of conflicts: %d.\n", count_number_conflicts(x, n, E));
+	fprintf(stdout, "REQUIRED TIME: about %.3f seconds.\n", (t2 - t1) * (1.0 / CLOCKS_PER_SEC));
 #endif
 
-		for(i=0; i<E; i++)
-		{
-			for(j=0; j<T; j++)
-				for(k=0; k<E; k++)
-					if(x[k] == j && n[k][i])
-					{
-						conflict_for_timeslot_int[i][j]++;
-						//if(conflict_for_timeslot_int[i][j] > value[i].value)
-						//	value[i].value = conflict_for_timeslot_int[i][j];
-						if(x[i] != j)
-							value[i].value++;
-					}
-			value[i].value = (conflict_for_timeslot_int[i][x[i]] == 0) ? 1 * value[i].value : conflict_for_timeslot_int[i][x[i]] * value[i].value; // value[i] = conflict where exam i is (minimum 1) * min conflicts in another timeslot
-		}
-
-		qsort(value, E, sizeof(Value), compare_Value_decreasing); // value[i]: the higher the better
-		while(to_swap == -1)
-			for(i=0; i<E; i++)
-			{
-				if(rand()/(double)RAND_MAX < RANDOMNESS)
-					continue;
-				to_swap = value[i].exam;
-				break;
-			}
-
-		for(i=0; i<T; i++)
-		{
-			conflict_for_timeslot[i].timeslot = i;
-			conflict_for_timeslot[i].conflict = conflict_for_timeslot_int[to_swap][i];
-		}
-
-		insert_TabuList(tl, to_swap, x[to_swap]);
-		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, to_swap);
-
-		//reset
-		found = 0;
-		to_swap = -1;
-		for(i=0; i<E; i++)
-		{
-			value[i].exam = i;
-			value[i].value = 0;
-			for(j=0; j<T; j++)
-				conflict_for_timeslot_int[i][j] = 0;
-		}
-	}
-	free(conflict_for_timeslot);
+	return;
 }
 static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T)
 {
-	int i, j, found = 0, to_swap, candidate_timeslot = 0, mark[E];
+	int i, j, to_swap, candidate_timeslot = 0, mark[E];
 	TABU tl = new_TabuList(TABU_LENGTH);
 	Conflict *conflict_for_timeslot = malloc(T * sizeof(Conflict));
+
+	srand(time(NULL)); // NON DETERMINISMO: ogni esecuzione è diversa dalle altre
 
 	while(1)
 	{
@@ -199,7 +140,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 		//for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
 		fprintf(stdout, "\nNumber of conflicts: %d.\n", count_number_conflicts(x, n, E));
 #endif
-		// ****CERCO UN ESAME IN CONFLITTO CON UN ALTRO ESAME DELLO STESSO TIMESLOT
+		// look for an exam in conflict with another exam in the same timeslot
 		to_swap = rand() % E; // start the scan from a random exam
 		for(j=0; j<E; j++) // scan exams in a circular way
 		{
@@ -207,146 +148,119 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 			for(i=0; i<E; i++)
 				if(x[to_swap] == x[i] && n[to_swap][i])
 					break; // to_swap is in conflict with an exam in the same timeslot
-			if(i != E) break;
+			if(i != E)
+				break; // I found an exam in conflict with exam to_swap in the same timeslot
 		}
-		if(j==E) // feasible initial solution found
-			break;
+		if(j==E) // feasible initial solution found (there is no an exam in conflict with another exam in the same timeslot)
+			break; // exit from while(1)
 
-		insert_TabuList(tl, to_swap, x[to_swap]);
-		candidate_timeslot = insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, to_swap);
-		// ****CERCO DOVE METTERE L'ESAME CHE HO TOLTO
-		//now we look for a timeslot for the exam j, otherwise we put in a not available timeslot
-		//to_swap = found;
+		insert_TabuList(tl, to_swap, x[to_swap]); // move back exam to_swap in timeslot x[to_swap] is forbidden for the next moves
+		candidate_timeslot = insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, to_swap); // insert to_swap in the exam best timeslot I can (with less conflicts). Candidate_timeslot is the timeslot where i putted the exam to_swap
 
-		/*to_swap = rand() % E;
+		// look for an exam in timeslot candidate_timeslot to move in another timeslot (that may be also candidate_timeslot). The reason is to allow "splitting" group of exams not in conflict eachother, to better explore the solution space. Note that I don't consider this an action (don't update the tabu list)
+
+		// Possibility 1: select exam in candidate_timeslot which has more conflicts in that timeslot
+		for(i=0;i<E;i++) mark[i] = 0; // reset conflict counter
+		for(i=0;i<E;i++)
+			if(x[i] == candidate_timeslot) // considering exam i in candidate_timeslot
+				for(j=0;j<E;j++)
+					if(x[j] == candidate_timeslot && n[i][j] && j != to_swap && j!=i) // exam j is in the same timeslot and is in conflict
+					{
+						mark[i]++; // increase counter for exam i and j
+						mark[j]++;
+					}
+		qsort(mark, E, sizeof(int), compare_int_decreasing); // sort exam by decreasing number of conflicts with other exams in candidate_timeslot
+		do
+		{
+			for(i=0;i<E && mark[i] > 0;i++)
+			{
+				if(rand()/(double)RAND_MAX < RANDOMNESS)
+					continue;
+				break;
+			}
+		}while(i == E || mark[i] != 0);
+
+		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, i); // insert the selected exam in the best timeslot (it may be also the same candidate_timeslot)
+
+		/*// Possibility 2: select a random exam in candidate_timeslot in conflict with another exam
+		to_swap = rand() % E;
 		for(i=0; i<E; i++)
 		{
 			to_swap = (to_swap+1) % E;
 			if(x[to_swap] == candidate_timeslot)
 				for(j=0; j<E; j++)
-					if(x[to_swap] == x[j] && n[to_swap][j])
+					if(x[j] == candidate_timeslot && n[to_swap][j])
 						break; // to_swap is in conflict with an exam in the same timeslot
 			if(j == E)
 				break;
 		}*/
 
-		// TENTATIVO SCEGLIENDO TRA GLI ESAMI CON PIù CONFLITTI NEL CANDIDATE_TIMESLOT
-		for(i=0;i<E;i++) mark[i] = 0;
-		for(i=0;i<E;i++)
-			if(x[i] == candidate_timeslot)
-				for(j=0;j<E;j++)
-					if(x[j] == candidate_timeslot && n[i][j] && j != to_swap && j!=i)
-					{
-						mark[i]++;
-						mark[j]++;
-					}
-		qsort(mark, E, sizeof(int), compare_int_decreasing);
-		for(i=0;i<E && mark[i] > 0;i++)
-		{
-			if(rand()/(double)RAND_MAX < RANDOMNESS)
-				continue;
-			break;
-		}
-		if(i==E || mark[i] == 0)
-			i = 0;
-		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, i);
-
-		/*// TENTATIVO SCEGLIENDO A CASO IN QUEL TIMESLOT
+		/*// Possibility 3: select a random exam in that timeslot
 		i = rand() % E;
 		for(j=0; j<E; j++)
 			if(x[(i+j)%E] == candidate_timeslot)
 				break;
 		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, (i+j)%E);
 		*/
-		/*// TENTATIVO COME QUELLO CON MENO CONFLITTI NEGLI ALTRI TIMESLOT
+
+		/*// Possibility 4: select an exam with less conflict in other timeslots
 		for(i=0;i<E;i++) mark[i] = 0;
 		for(i=0;i<E;i++)
 			if(x[i] == candidate_timeslot)
 				for(j=0;j<E;j++)
 					if(x[j] != candidate_timeslot && n[i][j] && j != to_swap && j!=i)
 					{
-						mark[i]++; //###@@@!!!!! E SE INVECE SEGNASSI QUANTI CONFLITTI HO NEGLI ALTRI TIMESLOT E PRENDESSI QUELLO CON MENO CONFLITTI?
+						mark[i]++;
 						mark[j]++;
 					}
 		qsort(mark, E, sizeof(int), compare_int_decreasing);
-		for(i=0;i<E && mark[i] > 0;i++)
+		do
 		{
-			if(rand()/(double)RAND_MAX < RANDOMNESS)
-				continue;
-			break;
-		}
-		if(i==E || mark[i] == 0)
-			i = 0;
+			for(i=0;i<E && mark[i] > 0;i++)
+			{
+				if(rand()/(double)RAND_MAX < RANDOMNESS)
+					continue;
+				break;
+			}
+		}while(i == E || mark[i] != 0);
 		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, mark[i]);
 		*/
-
-
-		/*for(i=0; i<T; i++)
-		{
-			for(j=0; j<E; j++)
-				if(x[j] == i && n[to_swap][j] )
-					break;
-			if(j==E) // no conflictual exam with to_swap in timeslot i
-				break;
-		}
-		if(i == T) // there are conflictual exams everywhere
-		{
-			i = rand() % T;
-			while(check_TabuList(tl, to_swap, i))
-				i = (i+1) % T;
-		}
-		x[to_swap] = i;
-		insert_TabuList(tl, to_swap, i);*/
-
-		//reset
-		found = 0;
 	}
 	free(conflict_for_timeslot);
+	delete_TabuList(tl);
 }
 static int insert_exam_in_better_timeslot(int *x, int **n, int E, int T, TABU tl, Conflict *conflict_for_timeslot, int to_swap)
 {
-	int i, j, found = 0, candidate_timeslot;
+	int i, j, found = 0, candidate_timeslot = -1;
 	for(i=0; i<T; i++)
 	{
 		conflict_for_timeslot[i].conflict = 0;
 		conflict_for_timeslot[i].timeslot = i;
 	}
 
-	// ****CALCOLO PER OGNI TIMESLOT QUANTI CONFLITTI AVREI CON L'ESAME SCELTO e ORDINO QUESTO VETTORE
-	for(i=0; i<T; i++) // SI PUO' FARE PIù EFFICIENTEMENTE IN QUALCHE MODO? cosi ogni neighborhood costa O(T*E)
+	// count how many conflicts I would have putting exam to_swap in each timeslot, and sort the array
+	for(i=0; i<T; i++)
 		for(j=0; j<E; j++)
-			if(x[j] == i && n[to_swap][j]) // if j-exam is in timeslot T and j-exam and to_swap-exam are conflictual
-				conflict_for_timeslot[i].conflict++; // increase counter of conflict present in timeslot T (of course all timeslot will have at least 1 conflict, otherwise we would put to_swap in that timeslot already backward)
+			if(x[j] == i && n[to_swap][j]) // if j-exam is in timeslot i and j-exam and to_swap-exam are conflictual
+				conflict_for_timeslot[i].conflict++; // increase counter of conflict present in timeslot i
 
-	qsort(conflict_for_timeslot, T, sizeof(Conflict), compare_conflict_increasing); // sort the array by decreasing conflict
-	// ****CERCO UN ESAME DA TOGLIERE DA UN TIMESLOT PER METTERE L'ESAME SCELTO
+	qsort(conflict_for_timeslot, T, sizeof(Conflict), compare_conflict_increasing); // sort the array by increasing conflict
+
+	// select the timeslot where move exam to_swap
 	for(i=0; i<T && !found; i++)
 	{
-		if(rand()/(double)RAND_MAX < RANDOMNESS)
+		if(rand()/(double)RAND_MAX < RANDOMNESS) // GRASP (greedy randomized) + TabuSearch
 			continue;
-		candidate_timeslot = conflict_for_timeslot[i].timeslot; // candidate_timeslot is the candidate_timeslot timeslot
-		if(!check_TabuList(tl, to_swap, candidate_timeslot)) // GRASP (greedy randomized) + TabuSearch
+		candidate_timeslot = conflict_for_timeslot[i].timeslot;
+		if(!check_TabuList(tl, to_swap, candidate_timeslot)) // if move to_swap into candidate_timeslot is allowed, break
 			break;
 	}
 	if(i==T) // always continued, repeat without randomness
 	{
-		/*for(i=0; i<T && !found; i++)
-		{
-			candidate_timeslot = conflict_for_timeslot[i].timeslot; // candidate_timeslot is the candidate_timeslot timeslot
-			if(check_TabuList(tl, to_swap, candidate_timeslot))
-				continue;
-			for(j=0; j<E && !found; j++)
-				if(x[j] == candidate_timeslot) // if j-exam is in the candidate_timeslot timeslot and the swap is allowed
-					found = j;
-		}
-		if(!found)
-			found = rand() % E;*/
-		candidate_timeslot = conflict_for_timeslot[0].timeslot;
+		candidate_timeslot = conflict_for_timeslot[0].timeslot; // select the best timeslot
 	}
-	//candidate_timeslot is the timeslot where we're putting exam to_swap
-	// ****METTO L'ESAME SCELTO ALL'INIZIO NEL TIMESLOT SELEZIONATO
-	//insert_TabuList(tl, to_swap, x[to_swap]); LA METTO FUORI DALLA FUNZIONE (cosi non aggiorno la tabulist quando vado ad inserire l'elemento che avevo rimosso)
-	x[to_swap] = candidate_timeslot;
+
+	x[to_swap] = candidate_timeslot; // move exam to_swap into candidate_timeslot (updating the tabu list is done by the caller)
 
 	return candidate_timeslot;
 }
@@ -364,7 +278,7 @@ int compare_int_decreasing(const void* a, const void* b)
 int compare_Value_decreasing(const void* a, const void* b)
 {
 	Value A = *(Value*)a, B = *(Value*) b;
-	float x = B.value - A.value;
+	int x = B.value - A.value;
 	if(x>0)
 		return 1;
 	if(x<0)

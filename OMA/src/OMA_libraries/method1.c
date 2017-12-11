@@ -7,12 +7,10 @@
 #define DEBUG_METHOD1
 
 #include "method1.h"
-#include "initialization.h"
 #include <stdio.h>
 
-void solveMethod1(int *x, int T, int E, int S, int **n, int *students_per_exam, int **conflictual_students, char *instance_name)
+void optimizationMethod1(int *x, int T, int E, int S, int **n, int *students_per_exam, int **conflictual_students, char *instance_name)
 {
-	initialization(x, n, E, T);
 
 #ifdef DEBUG_METHOD1
 		int i;

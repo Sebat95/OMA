@@ -9,6 +9,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "OMA_libraries\initialization.h"
 #include "OMA_libraries\method1.h"
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P, int ***conflictual_students_P);
@@ -26,7 +28,7 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 	int **n; // n[i,j] is the number of students enrolled in exams i and j (conflictual)
 
 	int *students_per_exam; // number of students enrolled in each exam
-	int **conflictual_students; // ExE matrix which specifies the number of conflictual students between two exams
+	int **conflictual_students; // ExE matrix which specifies the number of conflictual students between two exams (is the matrix n)
 	/**********************************
 		 * NOTA: dai dati che ci da Manerba, potremmo salvare anche a che esami è iscritto
 		 * ogni studente, usando quest'informazione per migliorare la soluzione iniziale/generazione del neighborhood
@@ -35,11 +37,13 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 	 */
 
 	// DECISION VARIABLES
-	int *x; // x[i] = timeslot of exam i-1
+	int *x; // x[i] = timeslot of exam i+1
 
-	setup(instance_name, &T, &E, &S, &n, &x, &students_per_exam, &conflictual_students);
+	setup(instance_name, &T, &E, &S, &n, &x, &students_per_exam, &conflictual_students); // read instance file and setup data structures
 
-	solveMethod1(x, T, E, S, conflictual_students, students_per_exam, conflictual_students, instance_name);
+	initialization(x, conflictual_students, E, T); // find an initial solution
+
+	optimizationMethod1(x, T, E, S, conflictual_students, students_per_exam, conflictual_students, instance_name);
 
 	return 0;
 }
@@ -124,6 +128,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 			}
 		}
 	}
+
 #ifdef DEBUG_MAIN
 	fprintf(stdout, "Number of exams: %d\n", *E_P);
 	fprintf(stdout, "Number of timeslots: %d\n\n", *T_P);
@@ -138,8 +143,6 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 			fprintf(stdout, "%d ", (*conflictual_students_P)[i][j]);
 		fprintf(stdout, "\n");
 	}
-
-
 #endif
 
 	for(i=0; i<S; i++)
