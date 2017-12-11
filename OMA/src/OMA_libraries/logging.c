@@ -4,7 +4,7 @@
  *  Created on: 08 dic 2017
  *      Author: Samuele
  */
-#define DEBUG_LOGGING
+//#define DEBUG_LOGGING
 
 
 #include <time.h>
@@ -27,40 +27,39 @@ int counter=0;
 int w_a=0; //write or append
 
 
-static void write_back(){
+void write_back(){
 	FILE *fp;
 	int i, j;
 	char file_mode[2];
 
-	if(w_a==0){
+	if(w_a==0){ //if it's the first time we are logging then write
 		w_a++;
 		strcpy(file_mode, "w");
 	}
 	else
-		strcpy(file_mode, "a");
+		strcpy(file_mode, "a"); //if not append
 
 	if((fp = fopen("log.txt", file_mode)) == NULL)
 	{
-		fprintf(stdout, "Error during 'log.txt' creation");
+		fprintf(stdout, "Error during 'log.txt' manipulation");
 		return;
 	}
 
-	for(i=0; i<counter; i++){
+	//write the log buffer on file
+	for(i=0; i<counter; i++)
 		for(j=0; j<logs[i].dim; j++){
 			fprintf(fp, "%s", logs[i].things_to_be_logged[j]);
 			#ifdef DEBUG_LOGGING
 				printf("%s", logs[i].things_to_be_logged[j]);
 			#endif
 		}
-		fprintf(fp, "\n");
-	}
 
 	fclose(fp);
 	counter=0;
 }
 
 void logger(char **things, int n){
-
+	//if the log buffer is full then flush it
 	if(counter==MAX_PENDING_LOGS)
 		write_back();
 
@@ -71,29 +70,28 @@ void logger(char **things, int n){
 
 
 void start_timer(){
-	begin=(double)clock();
-	#ifdef DEBUG_LOGGING
-		printf("%f\n", (double) begin);
-	#endif
+	begin=clock();
 }
 
 void stop_timer(){
-	end=(double)clock();
+	end=clock();
 
-	char log[70], tot_time[10], tot_clock_cycles[10];
+	char **log;
 
-	if (begin == 0) return;
+	//if (begin == 0) return; //if there wes not a start_timer before
 
-	snprintf(tot_time, 10, "%.3f", (double) (end - begin));
-	snprintf(tot_clock_cycles, 10, "%.3f", (double) ((end - begin) / CLOCKS_PER_SEC));
-
-
-	sprintf(log, "Total Time Elapsed: %s\nTotal Clock Cycles Needed: %s\n", tot_time, tot_clock_cycles);
+	//prepare a log
+	log=(char **)malloc(2*sizeof(char*));
+	log[0]=(char *)malloc(1000*sizeof(char));
+	log[1]=(char *)malloc(1000*sizeof(char));
+	sprintf(log[0], "Total Time Elapsed: %ld\n",  (end - begin));
+	sprintf(log[1], "Total Clock Cycles Needed: %.3f\n", (double) ((end - begin) / CLOCKS_PER_SEC));
 	#ifdef DEBUG_LOGGING
-		printf("%s\n", log);
+		printf("%s\n", log[0]);
+		printf("%s\n", log[1]);
 	#endif
 
-	logger(&log, 1);
+	logger(log, 2);
 }
 
 void instant_wb(char **things, int n){
