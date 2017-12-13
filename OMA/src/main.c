@@ -12,6 +12,7 @@
 
 #include "OMA_libraries\initialization.h"
 #include "OMA_libraries\method1.h"
+#include "OMA_libraries\method3.h"
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P, int ***conflictual_students_P);
 
@@ -50,7 +51,7 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P, int ***conflictual_students_P)
 {
-	int i, j, k, S;
+	int i, j, k;
 	int **enrolled_stud;
 	char line[100];
 	FILE *fp;
@@ -98,10 +99,10 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	}
 	while(fgets(line, 99, fp) != NULL)
 	{
-		sscanf(line, "s%d %*d", &S);
+		sscanf(line, "s%d %*d", S_P);
 	}
-	enrolled_stud = malloc(S * sizeof(int*));
-	for(i=0; i<S; i++)
+	enrolled_stud = malloc(*S_P * sizeof(int*));
+	for(i=0; i<*S_P; i++)
 		enrolled_stud[i] = calloc(*E_P, sizeof(int));
 	rewind(fp);
 	while(fgets(line, 99, fp) != NULL)
@@ -118,7 +119,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	{
 		for(j=i+1; j<*E_P; j++)
 		{
-			for(k=0; k<S-1; k++)
+			for(k=0; k<*S_P-1; k++)
 			{
 				if(enrolled_stud[k][i] == 1 && enrolled_stud[k][j] == 1)
 				{
@@ -145,7 +146,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	}
 #endif
 
-	for(i=0; i<S; i++)
+	for(i=0; i<*S_P; i++)
 		free(enrolled_stud[i]); // not useful anymore
 	free(enrolled_stud);
 	return;

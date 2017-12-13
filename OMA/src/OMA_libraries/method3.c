@@ -9,6 +9,7 @@
 #include "method1.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> //for memcpy
 #include <math.h>
 #define DIV 100
 
@@ -18,39 +19,53 @@ static double penalty(int *x, int T, int E, int S, int **n){
 
 	for(i=0; i<E; i++)
 		for(j=i+1; j<E; j++){
-			delta=x[i]-x[j];
+			delta=abs(x[i]-x[j]);
 			if(delta==0 && n[i][j]!=0) //unfeasable solution
 				return -1;
-			if(delta<=5 && n[i][j]!=0)
+			if(delta<=5 && delta >=0 && n[i][j]!=0)
 				pen+=pow(2, delta)*n[i][j]/S;
 		}
 
 	return pen;
 }
 
-static double swap(x, T, E, iter){
-	int factor=(int)(E/iter+1), i, app;
+static void swap(int *x, int init, int end){
+	int i, app, factor=(int) end/3;
 
-	for(i=0; i<factor; i++){
-		x[i]=app;
-		x[i]=x[E-i-1];
+	for(i=init; i<factor; i++){
+		app=x[i];
+		x[i]=x[end-i-1];
+		x[end-i-1]=app;
 	}
-
-	return 0.0;
 }
 
 void optimizationMethod3(int *x, int T, int E, int S, int **n, int *students_per_exam, int **conflictual_students, char *instance_name)
 {
-	int iter=0;
-	double prob, temp=1.0, new_pen, best_pen=100000.0;
-	int *best;
+	int iter=0, mul=0, begin=0, end=E, best[E];
+	double prob, temp=1.0, new_pen, best_pen=penalty(x, T, E, S, n);
 
 	memcpy(best, x, E*sizeof(int)); //initialize best solution
+
+	#ifdef DEBUG_METHOD3
+	printf("\nInitial penalty: %f\n", best_pen);
+	#endif
 
 	while(iter<1000){ //stopping condition??
 		prob = (double)rand() / (double)RAND_MAX; //probability to make or not the swap
 		if ((prob+temp)/2 > 0.5){
-			new_pen = swap(x, T, E, iter);
+			swap(x, begin, end);
+			if(end==E){
+				mul++;
+				end = (int) end/(mul*3);
+				begin=0;
+			}
+			else{
+				begin=end;
+				end = (int) end+(E/mul*3);
+			}
+			new_pen = penalty(x, T, E, S, n);
+			if(new_pen == -1)
+				continue;
 			#ifdef DEBUG_METHOD3
 			printf("New Penalty: %f; Best penalty: %f\n", new_pen, best_pen);
 			#endif
