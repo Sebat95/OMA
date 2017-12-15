@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 
 	initialization(x, conflictual_students, E, T); // find an initial solution
 
-	optimizationMethod1(x, T, E, S, conflictual_students, students_per_exam, conflictual_students, instance_name);
+	optimizationMethod3(x, T, E, S, conflictual_students, students_per_exam, conflictual_students, instance_name);
 
 	return 0;
 }
