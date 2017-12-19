@@ -11,9 +11,9 @@
 #include <string.h>
 
 #include "OMA_libraries\initialization.h"
-#include "OMA_libraries\method1.h"
+#include "OMA_libraries\method2.h"
 
-void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P, int ***conflictual_students_P);
+void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P);
 
 int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 {
@@ -28,7 +28,6 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 	int **n; // n[i,j] is the number of students enrolled in exams i and j (conflictual)
 
 	int *students_per_exam; // number of students enrolled in each exam
-	int **conflictual_students; // ExE matrix which specifies the number of conflictual students between two exams (is the matrix n)
 	/**********************************
 		 * NOTA: dai dati che ci da Manerba, potremmo salvare anche a che esami è iscritto
 		 * ogni studente, usando quest'informazione per migliorare la soluzione iniziale/generazione del neighborhood
@@ -39,16 +38,18 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 	// DECISION VARIABLES
 	int *x; // x[i] = timeslot of exam i+1
 
-	setup(instance_name, &T, &E, &S, &n, &x, &students_per_exam, &conflictual_students); // read instance file and setup data structures
+	// ##### PROBABILMENTE LA FUNZIONE SETUP SI PUò RENDERE PIù VELOCE!!! ###
+	setup(instance_name, &T, &E, &S, &n, &x, &students_per_exam); // read instance file and setup data structures
 
-	initialization(x, conflictual_students, E, T); // find an initial solution
+	initialization(x, n, E, T); // find an initial solution
 
-	optimizationMethod1(x, T, E, S, conflictual_students, students_per_exam, conflictual_students, instance_name);
+	optimizationMethod2(x, T, E, S, n, students_per_exam, instance_name);
+	//optimizationMethod3(x, T, E, S, n, students_per_exam, NULL, instance_name);
 
 	return 0;
 }
 
-void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P, int ***conflictual_students_P)
+void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual_students_P, int **x_P, int **students_per_exam_P)
 {
 	int i, j, k, S;
 	int **enrolled_stud;
@@ -100,6 +101,7 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **
 	{
 		sscanf(line, "s%d %*d", &S);
 	}
+	*S_P = S;
 	enrolled_stud = malloc(S * sizeof(int*));
 	for(i=0; i<S; i++)
 		enrolled_stud[i] = calloc(*E_P, sizeof(int));
