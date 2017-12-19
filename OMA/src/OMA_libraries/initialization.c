@@ -4,10 +4,10 @@
  *  Created on: 03 dic 2017
  *      Author: Nicola
  */
-#define DEBUG_INITIALIZATION
+#define DEBUG_INITIALIZATION 1
 
-#define RANDOMNESS 0.2
-#define TABU_LENGTH 5
+#define RANDOMNESS_INIT 0.2
+#define TABU_LENGTH_INIT 5
 
 #include "initialization.h"
 #include "tabu_search.h"
@@ -91,18 +91,20 @@ void initialization(int *x, int **n, int E, int T)
 	free(timeslots_not_available);
 	free(rank);
 
-	if(greedy_successfull) // greedy algorithm has found a feasible solution (no metaheuristic required)
-		return;
-
 	// METAHEURISTIC PART ***********************
 #ifdef DEBUG_INITIALIZATION
-	fprintf(stdout, "Soluzione iniziale greedy con %d conflitti.\n", count_number_conflicts(x, n, E));
-	fprintf(stdout, "Greedy algorithm for the initialization didn't found a feasible solution.\nA metaheuristic is required.\n");
 	clock_t t1, t2;
 	t1 = clock();
 #endif
 
-	initializationMetaheuristic_tabuSearch(x, n, E, T);
+	if(!greedy_successfull) // greedy algorithm has found a feasible solution (no metaheuristic required)
+	{
+#ifdef DEBUG_INITIALIZATION
+		fprintf(stdout, "Soluzione iniziale greedy con %d conflitti.\n", count_number_conflicts(x, n, E));
+		fprintf(stdout, "Greedy algorithm for the initialization didn't found a feasible solution.\nA metaheuristic is required.\n");
+#endif
+		initializationMetaheuristic_tabuSearch(x, n, E, T);
+	}
 
 #ifdef DEBUG_INITIALIZATION
 	t2 = clock();
@@ -133,7 +135,7 @@ void initialization(int *x, int **n, int E, int T)
 static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T)
 {
 	int i, j, to_swap, candidate_timeslot = 0, mark[E];
-	TABU tl = new_TabuList(TABU_LENGTH);
+	TABU tl = new_TabuList(TABU_LENGTH_INIT, TABU_LENGTH_INIT, TABU_LENGTH_INIT);
 	Conflict *conflict_for_timeslot = malloc(T * sizeof(Conflict));
 
 	srand(time(NULL)); // NON DETERMINISMO: ogni esecuzione è diversa dalle altre
@@ -158,7 +160,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 		if(j==E) // feasible initial solution found (there is no an exam in conflict with another exam in the same timeslot)
 			break; // exit from while(1)
 
-		insert_TabuList(tl, to_swap, x[to_swap]); // move back exam to_swap in timeslot x[to_swap] is forbidden for the next moves
+		insert_TabuList(tl, to_swap, x[to_swap], 0); // move back exam to_swap in timeslot x[to_swap] is forbidden for the next moves
 		candidate_timeslot = insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, to_swap); // insert to_swap in the exam best timeslot I can (with less conflicts). Candidate_timeslot is the timeslot where i putted the exam to_swap
 
 		// look for an exam in timeslot candidate_timeslot to move in another timeslot (that may be also candidate_timeslot). The reason is to allow "splitting" group of exams not in conflict eachother, to better explore the solution space. Note that I don't consider this an action (don't update the tabu list)
@@ -178,7 +180,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 		{
 			for(i=0;i<E && mark[i] > 0;i++)
 			{
-				if(rand()/(double)RAND_MAX < RANDOMNESS)
+				if(rand()/(double)RAND_MAX < RANDOMNESS_INIT)
 					continue;
 				break;
 			}
@@ -222,7 +224,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 		{
 			for(i=0;i<E && mark[i] > 0;i++)
 			{
-				if(rand()/(double)RAND_MAX < RANDOMNESS)
+				if(rand()/(double)RAND_MAX < RANDOMNESS_INIT)
 					continue;
 				break;
 			}
@@ -253,13 +255,13 @@ static int insert_exam_in_better_timeslot(int *x, int **n, int E, int T, TABU tl
 	// select the timeslot where move exam to_swap
 	for(i=0; i<T && !found; i++)
 	{
-		if(rand()/(double)RAND_MAX < RANDOMNESS) // GRASP (greedy randomized) + TabuSearch
+		if(rand()/(double)RAND_MAX < RANDOMNESS_INIT) // GRASP (greedy randomized) + TabuSearch
 			continue;
 		candidate_timeslot = conflict_for_timeslot[i].timeslot;
-		if(!check_TabuList(tl, to_swap, candidate_timeslot)) // if move to_swap into candidate_timeslot is allowed, break
+		if(!check_TabuList(tl, to_swap, candidate_timeslot, 0)) // if move to_swap into candidate_timeslot is allowed, break
 			break;
 	}
-	if(i==T) // always continued, repeat without randomness
+	if(i==T) // always continued, repeat without RANDOMNESS_INIT
 	{
 		candidate_timeslot = conflict_for_timeslot[0].timeslot; // select the best timeslot
 	}
