@@ -11,12 +11,7 @@
 #include <string.h>
 
 #include "OMA_libraries\initialization.h"
-<<<<<<< HEAD
 #include "OMA_libraries\method2.h"
-=======
-#include "OMA_libraries\method1.h"
-#include "OMA_libraries\method3.h"
->>>>>>> branch 'master' of https://github.com/Sebat95/OMA
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P);
 
@@ -48,12 +43,8 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 
 	initialization(x, n, E, T); // find an initial solution
 
-<<<<<<< HEAD
 	optimizationMethod2(x, T, E, S, n, students_per_exam, instance_name);
 	//optimizationMethod3(x, T, E, S, n, students_per_exam, NULL, instance_name);
-=======
-	optimizationMethod3(x, T, E, S, conflictual_students, students_per_exam, conflictual_students, instance_name);
->>>>>>> branch 'master' of https://github.com/Sebat95/OMA
 
 	return 0;
 }
@@ -110,14 +101,8 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	{
 		sscanf(line, "s%d %*d", S_P);
 	}
-<<<<<<< HEAD
-	*S_P = S;
-	enrolled_stud = malloc(S * sizeof(int*));
-	for(i=0; i<S; i++)
-=======
 	enrolled_stud = malloc(*S_P * sizeof(int*));
 	for(i=0; i<*S_P; i++)
->>>>>>> branch 'master' of https://github.com/Sebat95/OMA
 		enrolled_stud[i] = calloc(*E_P, sizeof(int));
 	rewind(fp);
 	while(fgets(line, 99, fp) != NULL)
