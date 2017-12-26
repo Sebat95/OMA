@@ -62,8 +62,11 @@ TabuList* new_TabuList(int length, int min_length, int max_length)//, int iterat
 }
 int check_TabuList(TabuList* tl, int x, int y, int type)
 {
-	return match_FIFO(tl->fifo_queue, x, y, type); // if the action is not swap
-	//return match_FIFO(tl->fifo_queue, x, y) || match_FIFO(tl->fifo_queue, y, x); // because we're swapping
+//	printf("Thread %d check in\n", omp_get_thread_num());
+//	int ret = match_FIFO(tl->fifo_queue, x, y, type);
+//	printf("Thread %d check out\n", omp_get_thread_num());
+//	return ret;
+	return match_FIFO(tl->fifo_queue, x, y, type);
 }
 void insert_TabuList(TabuList* tl, int x, int y, int type)
 {

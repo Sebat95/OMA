@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 // DATA STRUCTURES *************************
 
@@ -43,7 +44,7 @@ static int compare_Value_decreasing(const void* a, const void* b);
 
 void initialization(int *x, int **n, int E, int T)
 {
-	int i, j, greedy_successfull = 1;
+	int i, j, greedy_successfull = 1, found = 0;
 	Value* rank = malloc(E * sizeof(Value)); // sorting exam by conflicts with other deeply improves initial solution (without this, metaheuristic does not converge quickly for instance06)
 	unsigned char *timeslots_not_available = calloc(T, sizeof(int)); // boolean array (1 means that the timeslot is not available for a certain exam)
 
@@ -103,7 +104,24 @@ void initialization(int *x, int **n, int E, int T)
 		fprintf(stdout, "Soluzione iniziale greedy con %d conflitti.\n", count_number_conflicts(x, n, E));
 		fprintf(stdout, "Greedy algorithm for the initialization didn't found a feasible solution.\nA metaheuristic is required.\n");
 #endif
-		initializationMetaheuristic_tabuSearch(x, n, E, T);
+
+	printf("greedy finita!\n");
+	fflush(stdout);
+#pragma omp parallel
+		{
+		while(!found)
+		{
+			int x_thread[E];
+			printf("thread  %d ha iniziato la metaheuristica\n", omp_get_thread_num());
+			fflush(stdout);
+			memcpy(x_thread, x, E*sizeof(int));
+			initializationMetaheuristic_tabuSearch(x_thread, n, E, T);
+			printf("thread  %d ha finito la metaheuristica\n", omp_get_thread_num());
+			fflush(stdout);
+			memcpy(x, x_thread, E*sizeof(int));
+			found = 1;
+		}
+		}
 	}
 
 #ifdef DEBUG_INITIALIZATION
@@ -144,7 +162,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 	{
 #ifdef DEBUG_INITIALIZATION
 		//for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
-		fprintf(stdout, "\nNumber of conflicts: %d.\n", count_number_conflicts(x, n, E));
+		fprintf(stdout, "\nNumber of conflicts: %d. Thread %d\n", count_number_conflicts(x, n, E), omp_get_thread_num());
 #endif
 		// look for an exam in conflict with another exam in the same timeslot
 		to_swap = rand() % E; // start the scan from a random exam
