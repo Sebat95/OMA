@@ -44,7 +44,7 @@
 #define NO_IMPR_DECREASE 150000 // COSI AZZERO
 
 // DESTROY
-#define DESTROY_THRESHOLD 5//500
+#define DESTROY_THRESHOLD 500
 // DESTROY FACENDO CON GLI SWAP
 #define DESTROY_GROUP 500
 #define DESTROY_SINGLE 500
@@ -55,7 +55,7 @@
 #define TEMP_PAR 0.995
 
 #define DIST_PAR 0.9
-#define SINGLE_DIST 1
+#define SINGLE_DIST 0
 #define GROUP_DIST 50
 #define ITERATIONS_DIST 1000
 
@@ -103,6 +103,7 @@ static void update_parameter(int no_impr_times, double trend, double *randomness
 static double computeDistance(int *x1, int *x2, int **n, int E, int T); // O(E^2)
 static int destroySolution(int *x, int **n, int E, int T, int n_timeslot);
 static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU tl, int *group_positions, int **group_conflicts, ExamPenalty *exam_penalty);
+static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T, int E, double actual_dist);
 // ** DEFINITIONS
 
 void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name) {
@@ -1034,7 +1035,7 @@ static int destroySolution(int *x, int **n, int E, int T, int n_timeslot)
 }
 static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU tl, int *group_positions, int **group_conflicts, ExamPenalty *exam_penalty)
 {
-	int dist;
+	double dist = 0, dist_old = -1;
 	int x_old[E];
 
 	memcpy(x_old, x, E*sizeof(int));
@@ -1051,18 +1052,21 @@ static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU
 	for(counter = 0; counter < DESTROY_GROUP; counter++)
 		pen = neighborhood1_random(x, n, T, E, tl, group_positions, group_conflicts, pen);*/
 	dist = computeDistance(x, x_old, n, E, T);
-	for()
+	while(dist != -1) // while there is a single swap that increment the dist
+	{
+		dist_old = dist;
+		dist = neighborhood2_bestFirst_destroy(x, x_old, n, T, E, dist_old);
+		printf("Dist = %f\tDist_old = %f\n", dist, dist_old);
+	}
 
-	fprintf(stdout, "Distanza calcolata: %5.5f\n", computeDistance(x, x_old, n, E, T));
-	fflush(stdout);
-	Sleep(1000);
-
+	pen = compute_penalty_complete(x, n, E);
 	return pen;
 }
-static int neighborhood2_bestFirst_destroy(int *x, int **n, int T, int E, TABU tl, ExamPenalty *exam_penalty, int actual_dist, double temperature)
+static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T, int E, double actual_dist)
 {
-	int i, j, k, to_swap, dist, x_old[E], old_timeslot;
-	memcpy(x_old, x, E*sizeof(int));
+	int i, j, k, to_swap, old_timeslot;
+	double dist;
+
 	to_swap = -1;
 	k = to_swap = rand() % T;
 	while (1)
@@ -1071,7 +1075,7 @@ static int neighborhood2_bestFirst_destroy(int *x, int **n, int T, int E, TABU t
 		for (i = 0; i < T; i++)
 		{
 			for (j = 0; j < E; j++)
-				if (x[to_swap] == i || (x[j] == i && n[j][to_swap]) || check_TabuList(tl, to_swap, i, 3))
+				if (x[to_swap] == i || (x[j] == i && n[j][to_swap]))
 					break; // unfeasible swap or not allowed
 			if (j != E)
 				continue;
@@ -1079,16 +1083,13 @@ static int neighborhood2_bestFirst_destroy(int *x, int **n, int T, int E, TABU t
 			old_timeslot = x[to_swap];
 			x[to_swap] = i;
 			dist = computeDistance(x, x_old, n, E, T);
-
-			if (actual_dist < dist) {
-				insert_TabuList(tl, to_swap, i, 3);
+			if (actual_dist < dist && fabs(dist-actual_dist) > 0.00000001)
 				return dist;
-			}
 			else
 				x[to_swap] = old_timeslot;
 		}
 		if (to_swap == k)
-			return actual_dist;
+			return -1;
 	}
 	return dist;
 }
