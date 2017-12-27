@@ -41,7 +41,7 @@
 #define IT_GROUP_RANDOM 100
 #define IT_SINGLE_RANDOM 100
 
-#define NO_IMPR_DECREASE 150000 // COSI AZZERO
+#define NO_IMPR_DECREASE 100
 
 // DESTROY
 #define DESTROY_THRESHOLD 500
@@ -107,9 +107,9 @@ static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T
 // ** DEFINITIONS
 
 void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name) {
-	long int iteration_counter = 0, partial_iteration_dist;
-	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trend = -1, B = 0, pen_norm, initial_penalties[ITERATION], tmp, temperature = 1, total_best_pen = INT_MAX;
-	int i, j, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E];
+	long int iteration_counter = 0;
+	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trend = -1, temperature = 1, total_best_pen = INT_MAX;
+	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E];
 	int actual_neighborhood = 0;
 	int last_improvements_number = -1, no_improvement_times = 0;
 	TABU tl = new_TabuList(TABU_LENGTH, MIN_TABU_LENGTH, MAX_TABU_LENGTH);
@@ -138,7 +138,6 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 				initial_pen / S);
 #endif
 
-		//if (partial_iteration_dist > ITERATIONS_DIST) {
 		if(partial_iteration == 0) {
 			old_dist = dist;
 			dist = computeDistance(x, x_old_dist, n, E, T); // PROVARE A CALCOLARE LA DISTANZA FACENDO DESTROY CON SWAP
@@ -223,6 +222,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 			break;
 		}
 //#ifdef DEBUG_METHOD2
+//		int j;
 //		if(pen != compute_penalty_complete(x, n, E))
 //		{
 //			fprintf(stdout, "PENALITA' SBAGLIATA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -255,7 +255,8 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 		temperature = TEMP_PAR * temperature + (1 - TEMP_PAR) * (1000000 * improvements_number / iteration_counter * (double) (fabs(pen - old_pen)) / pen);
 		old_pen = pen;
 		// MATEMATICI
-		/*if(partial_iteration <= ITERATION)
+		/*int B = 0, pen_norm, initial_penalties[ITERATION], tmp;
+		if(partial_iteration <= ITERATION)
 		 {
 		 //pen_norm = pen;
 		 pen_norm = 1;
