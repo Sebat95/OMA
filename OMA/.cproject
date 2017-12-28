@@ -74,7 +74,7 @@
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.412961878" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.release.852386474" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.release">
-								<option id="gnu.c.link.option.libs.1364294872" superClass="gnu.c.link.option.libs" useByScannerDiscovery="false" valueType="libs">
+								<option id="gnu.c.link.option.libs.1364294872" name="Libraries (-l)" superClass="gnu.c.link.option.libs" useByScannerDiscovery="false" valueType="libs">
 									<listOptionValue builtIn="false" value="gomp"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.linker.input.2109338407" superClass="cdt.managedbuild.tool.gnu.c.linker.input">

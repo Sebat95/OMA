@@ -13,21 +13,21 @@
 #define N_BEST 100
 #define RANDOMNESS_BEST 0.1
 #define RANDOMNESS_BEST_MIN 0.05
-#define RANDOMNESS_BEST_MAX 0.4
+#define RANDOMNESS_BEST_MAX 0.2
 #define TREND_THRESHOLD_BEST_RANDOM_GROUP 0.05
 
 #define N_BEST_SINGLE 200
 #define RANDOMNESS_BEST_SINGLE 0.2
-#define RANDOMNESS_BEST_SINGLE_MIN 0.2
-#define RANDOMNESS_BEST_SINGLE_MAX 0.6
+#define RANDOMNESS_BEST_SINGLE_MIN 0.1
+#define RANDOMNESS_BEST_SINGLE_MAX 0.5
 #define TREND_THRESHOLD_BEST_RANDOM_SINGLE 0.1
 
 #define RANDOMNESS_RANDOMorCHEAP_GROUP 0.8
-#define RANDOMNESS_RANDOMorCHEAP_GROUP_MIN 0.4
-#define RANDOMNESS_RANDOMorCHEAP_GROUP_MAX 0.95
+#define RANDOMNESS_RANDOMorCHEAP_GROUP_MIN 0.7
+#define RANDOMNESS_RANDOMorCHEAP_GROUP_MAX 0.9
 #define RANDOMNESS_RANDOMorCHEAP_SINGLE 0.5
-#define RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN 0.3
-#define RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX 0.7
+#define RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN 0.5
+#define RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX 0.9
 
 // matematici
 #define ALFA 0.3
@@ -45,7 +45,7 @@
 
 // DESTROY
 #define DESTROY_THRESHOLD 500
-// DESTROY FACENDO CON GLI SWAP
+// DESTROY FACENDO CON GLI -SWAP
 #define DESTROY_GROUP 500
 #define DESTROY_SINGLE 500
 // DESTORY CON LA FUNZIONE CHE REINIZIALIZZA
@@ -56,7 +56,7 @@
 
 #define DIST_PAR 0.9
 #define SINGLE_DIST 0
-#define GROUP_DIST 50
+#define GROUP_DIST 1
 #define ITERATIONS_DIST 1000
 
 #include "method2.h"
@@ -109,7 +109,7 @@ static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T
 void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name) {
 	long int iteration_counter = 0;
 	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trend = -1, temperature = 1, total_best_pen = INT_MAX;
-	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E];
+	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E], x_best[E], x_tot_best[E];
 	int actual_neighborhood = 0;
 	int last_improvements_number = -1, no_improvement_times = 0;
 	TABU tl = new_TabuList(TABU_LENGTH, MIN_TABU_LENGTH, MAX_TABU_LENGTH);
@@ -150,7 +150,13 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 			memcpy(x_old, x, E * sizeof(int)); // SE VOGLIO USARE LA DISTANZA PER IL MULTISTART
 
 			//pen = destroySolution(x, n, E, T, N_TIMESLOT); NON FUNZIONA CON I THREAD (debuggare o magari passare al random)
-			pen = destroySolution_swapping(x, n, E, T, pen, tl, group_positions, group_conflicts, exam_penalty);
+			//pen = destroySolution_swapping(x, n, E, T, pen, tl, group_positions, group_conflicts, exam_penalty);
+
+			memcpy(x, x_best, E*sizeof(E));
+			pen = destroySolution_swapping(x, n, E, T, best_pen, tl, group_positions, group_conflicts, exam_penalty);
+
+			actual_neighborhood = 0;
+			neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
 			continue; // go to the next iteration of the while
 		}
 
@@ -196,8 +202,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 		case 1:
 			if (partial_iteration > IT_SINGLE_BEST_RANDOM)// && trend < TREND_THRESHOLD_BEST_RANDOM_SINGLE)
 			{
-				neighborhood1_setup(x, n, T, E, group_positions,
-						group_conflicts);
+				neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
 				partial_iteration = 0;
 				actual_neighborhood = 0;
 				if (improvements_number == last_improvements_number) {
@@ -221,32 +226,36 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 			//pen = neighborhood2_random(x, n, T, E, tl, exam_penalty, pen);
 			break;
 		}
-//#ifdef DEBUG_METHOD2
-//		int j;
-//		if(pen != compute_penalty_complete(x, n, E))
-//		{
-//			fprintf(stdout, "PENALITA' SBAGLIATA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-//			fflush(stdout);
-//			exit(-100);
-//		}
-//		for(i=0; i<E; i++) if(x[i] != x_old[i])break;
-//		if(i == E) fprintf(stdout, "SOLUZIONE NON MODIFICATA!!!!!###########################");
-//		for(i=0; i<E; i++)
-//			for(j=0; j<E; j++)
-//				if(x[i] == x[j] && n[i][j])
-//				{
-//					fprintf(stdout, "SOLUZIONE UNFEASIBLE!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ò");
-//					exit(1);
-//				}
-//#endif
+/*#ifdef DEBUG_METHOD2
+		int j;
+		if(pen != compute_penalty_complete(x, n, E))
+		{
+			fprintf(stdout, "PENALITA' SBAGLIATA !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
+			fflush(stdout);
+			exit(-100);
+		}
+		for(i=0; i<E; i++) if(x[i] != x_old[i])break;
+		if(i == E) fprintf(stdout, "SOLUZIONE NON MODIFICATA!!!!!###########################");
+		for(i=0; i<E; i++)
+			for(j=0; j<E; j++)
+				if(x[i] == x[j] && n[i][j])
+				{
+					fprintf(stdout, "SOLUZIONE UNFEASIBLE!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ò");
+					exit(1);
+				}
+#endif*/
 
 		iteration_counter++;
 		partial_iteration++;
 		if (best_pen > pen) {
 			improvements_number++;
 			best_pen = pen;
+			memcpy(x_best, x, E*sizeof(E));
 			if(total_best_pen > best_pen)
+			{
 				total_best_pen = best_pen;
+				memcpy(x_tot_best, x, E*sizeof(E));
+			}
 		}
 
 		trend = (improvements_number < partial_iteration) ?
@@ -395,7 +404,7 @@ static int neighborhood1_bestRandom(int *x, int **n, int T, int E, TABU tl, int 
 
 #pragma omp parallel num_threads(threads) default(none) shared(n, T, E, tl, N_best, group_position, group_conflict, pen, moves) private(group1, group2, actual_pen, i, j)
 	{
-#pragma omp for
+#pragma omp for schedule(dynamic)
 	for (group1 = 0; group1 < T; group1++)
 		for (group2 = group1 + 1; group2 < T; group2++)
 		{
@@ -929,8 +938,7 @@ static int compute_penalty_complete(int *x, int **n, int E) // O(E^2)
 				pen += (int) pow(2, 5 - abs(x[i] - x[j])) * n[i][j];
 	return pen; // we have to count 2 times each combination
 }
-static int update_penalty(int *x, int **n, int E, int old_pen, int to_swap,
-		int old_timeslot, int new_timeslot) // O(E)
+static int update_penalty(int *x, int **n, int E, int old_pen, int to_swap,	int old_timeslot, int new_timeslot) // O(E)
 {
 	int i;
 	for (i = 0; i < E; i++) {
@@ -953,16 +961,18 @@ static void update_parameter(int no_impr_times, double trend, double *randomness
 
 	*tabu_length_P = update_TabuList(tl, MIN_TABU_LENGTH + var * (MAX_TABU_LENGTH - MIN_TABU_LENGTH));
 	//*tabu_length_P = update_TabuList(tl, MAX_TABU_LENGTH + var*(MIN_TABU_LENGTH - MAX_TABU_LENGTH));
-//	*randomness_single_P = RANDOMNESS_BEST_SINGLE_MIN + var * (RANDOMNESS_BEST_SINGLE_MAX - RANDOMNESS_BEST_SINGLE_MIN);
-//	*randomness_group_P = RANDOMNESS_BEST_MIN + var * (RANDOMNESS_BEST_MAX - RANDOMNESS_BEST_MIN);
+	//*randomness_single_P = RANDOMNESS_BEST_SINGLE_MIN + var * (RANDOMNESS_BEST_SINGLE_MAX - RANDOMNESS_BEST_SINGLE_MIN);
+	//*randomness_group_P = RANDOMNESS_BEST_MIN + var * (RANDOMNESS_BEST_MAX - RANDOMNESS_BEST_MIN);
 //	*randomness_randomOrCheap_group_P = RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN + var * (RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX - RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN);
 //	*randomness_randomOrCheap_single_P = RANDOMNESS_RANDOMorCHEAP_GROUP_MIN + var * (RANDOMNESS_RANDOMorCHEAP_GROUP_MAX - RANDOMNESS_RANDOMorCHEAP_GROUP_MIN);
+	*randomness_randomOrCheap_group_P = RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX + var * (RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN - RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX);
+	*randomness_randomOrCheap_single_P = RANDOMNESS_RANDOMorCHEAP_GROUP_MAX + var * (RANDOMNESS_RANDOMorCHEAP_GROUP_MIN - RANDOMNESS_RANDOMorCHEAP_GROUP_MAX);
 }
-static double computeDistance(int *x1, int *x2, int **n, int E, int T) // O(E^2)
+static double computeDistance(int *x1, int *x2, int **n, int E, int T) // O(E^2) DA OTTIMIZZARE !!!!!!!!!!!!!!!!!!!!!!!!! (es. se non uso il SINGLE_DIST)
 {
 	int i, j;
 	double dist = 0, dist_max;
-	dist_max = E * SINGLE_DIST + pow(E, 2) * GROUP_DIST / 2;
+	dist_max = E * SINGLE_DIST + E * E * GROUP_DIST / 2;
 	for (i = 0; i < E; i++) {
 		if (x1[i] != x2[i])
 			dist += SINGLE_DIST;
@@ -1036,7 +1046,7 @@ static int destroySolution(int *x, int **n, int E, int T, int n_timeslot)
 }
 static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU tl, int *group_positions, int **group_conflicts, ExamPenalty *exam_penalty)
 {
-	double dist = 0, dist_old = -1;
+	double i, dist = 0, dist_old = -1;
 	int x_old[E];
 
 	memcpy(x_old, x, E*sizeof(int));
@@ -1057,7 +1067,6 @@ static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU
 	{
 		dist_old = dist;
 		dist = neighborhood2_bestFirst_destroy(x, x_old, n, T, E, dist_old);
-		printf("Dist = %f\tDist_old = %f\n", dist, dist_old);
 	}
 
 	pen = compute_penalty_complete(x, n, E);
