@@ -6,6 +6,9 @@
  */
 #define DEBUG_METHOD2
 #define LOG_METHOD2
+#define DEFINE_PARAM
+
+#ifdef DEFINE_PARAM
 
 #define TABU_LENGTH 10
 #define MIN_TABU_LENGTH 1
@@ -59,6 +62,36 @@
 #define SINGLE_DIST 0
 #define GROUP_DIST 1
 #define ITERATIONS_DIST 1000
+
+#endif
+
+#ifndef DEFINE_PARAM
+
+int TABU_LENGTH=10, MIN_TABU_LENGTH=1, MAX_TABU_LENGTH=10;
+
+int N_BEST=100;
+double RANDOMNESS_BEST=0.1, RANDOMNESS_BEST_MIN=0.05, RANDOMNESS_BEST_MAX=0.2, TREND_THRESHOLD_BEST_RANDOM_GROUP=0.05;
+
+int N_BEST_SINGLE=200;
+double RANDOMNESS_BEST_SINGLE=0.2, RANDOMNESS_BEST_SINGLE_MIN=0.1, RANDOMNESS_BEST_SINGLE_MAX=0.5, TREND_THRESHOLD_BEST_RANDOM_SINGLE=0.1;
+
+double RANDOMNESS_RANDOMorCHEAP_GROUP=0.8, RANDOMNESS_RANDOMorCHEAP_GROUP_MIN=0.7, RANDOMNESS_RANDOMorCHEAP_GROUP_MAX=0.9, RANDOMNESS_RANDOMorCHEAP_SINGLE=0.5, RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN=0.5, RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX=0.9;
+
+double ALFA=0.3, BETA=0.4;
+int ITERATION=100, ITERATION_THRESHOLD=5000;
+
+int IT_GROUP_BEST_RANDOM=100, IT_SINGLE_BEST_RANDOM=100, IT_GROUP_RANDOM=100, IT_SINGLE_RANDOM=100;
+
+int NO_IMPR_DECREASE=100;
+
+int DESTROY_THRESHOLD=500, DESTROY_GROUP=500, DESTROY_SINGLE=500, N_TIMESLOT=3;
+
+double TEMP_PAR=0.995;
+
+double DIST_PAR=0.9;
+int SINGLE_DIST=0, GROUP_DIST=1, ITERATIONS_DIST=1000;
+
+#endif
 
 #include "method2.h"
 #include "tabu_search.h"
@@ -421,8 +454,12 @@ static int neighborhood1_bestRandom(int *x, int **n, int T, int E, TABU tl, int 
 	}
 
 	int threads = omp_get_max_threads();
-
+#ifdef DEFINE_PARAM
 #pragma omp parallel num_threads(threads) default(none) shared(n, T, E, tl, N_best, group_position, group_conflict, pen, moves) private(group1, group2, actual_pen, i, j)
+#endif
+#ifndef DEFINE_PARAM
+#pragma omp parallel num_threads(threads) default(none) shared(n, T, E, tl, N_best, N_BEST, group_position, group_conflict, pen, moves) private(group1, group2, actual_pen, i, j)
+#endif
 	{
 #pragma omp for schedule(dynamic)
 	for (group1 = 0; group1 < T; group1++)
@@ -711,8 +748,13 @@ static int neighborhood2_bestRandom(int *x, int **n, int T, int E, TABU tl, Exam
 	for (i = 0; i < N_BEST_SINGLE; i++)
 		N_best[i][0] = -1;
 	int threads=omp_get_max_threads();
-
+#ifdef DEFINE_PARAM
 #pragma omp parallel num_threads(threads) default(none) shared(T, E, x, N_best, moves, tl, actual_pen, randomness_single, n) private(to_swap, k, i, j, pen)
+#endif
+#ifndef DEFINE_PARAM
+#pragma omp parallel num_threads(threads) default(none) shared(T, E, x, N_best, N_BEST_SINGLE, moves, tl, actual_pen, randomness_single, n) private(to_swap, k, i, j, pen)
+#endif
+
 		{
 	#pragma omp for schedule(dynamic)
 		for(chosen = 0; chosen < E; chosen++) {
