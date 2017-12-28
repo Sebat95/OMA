@@ -5,6 +5,7 @@
  *      Author: Nicola
  */
 #define DEBUG_METHOD2
+#define LOG_METHOD2
 
 #define TABU_LENGTH 10
 #define MIN_TABU_LENGTH 1
@@ -62,6 +63,7 @@
 #include "method2.h"
 #include "tabu_search.h"
 #include "initialization.h"
+#include "logging.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -117,6 +119,13 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 	double randomness_single = RANDOMNESS_BEST_SINGLE, randomness_group = RANDOMNESS_BEST, dist = 0, delta_dist = 0, old_dist = 0, randomness_randomOrCheap_group = RANDOMNESS_RANDOMorCHEAP_GROUP, randomness_randomOrCheap_single = RANDOMNESS_RANDOMorCHEAP_SINGLE;
 	ExamPenalty *exam_penalty = malloc(E * sizeof(ExamPenalty));
 	int x_old_dist[E];
+
+
+	#ifdef LOG_METHOD2
+		char log[500];
+	#endif
+
+
 	group_positions = malloc(T * sizeof(int));
 	group_conflicts = malloc(T * sizeof(int*));
 	for (i = 0; i < T; i++)
@@ -137,6 +146,17 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 				temperature, no_improvement_times, pen / S, best_pen / S, total_best_pen / S,
 				initial_pen / S);
 #endif
+#ifdef LOG_METHOD2
+		memcpy(x_old, x, E*sizeof(int));
+		sprintf(log,
+				"It:%3d, Neigh:%d, TL_len:%d, Trend:%2.3f, RandSingle:%2.2f, RandGroup:%2.2f, Dist:%.5f, DeltaDist:%.5f, Temp:%+3.3f, NoImpr:%d, Pen:%5.3f, Best:%5.3f, TotBest:%5.3f, Init:%5.3f\n",
+				(int) iteration_counter, actual_neighborhood, tabu_length, trend,
+				randomness_single, randomness_group, dist, delta_dist,
+				temperature, no_improvement_times, pen / S, best_pen / S, total_best_pen / S,
+				initial_pen / S);
+		loggerSTR(log, 500);
+#endif
+
 
 		if(partial_iteration == 0) {
 			old_dist = dist;

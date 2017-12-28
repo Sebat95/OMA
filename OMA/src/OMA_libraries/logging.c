@@ -94,6 +94,20 @@ void stop_timer(){
 	logger(log, 2);
 }
 
+void loggerSTR(char *thing, int len){
+	char **log;
+
+	//prepare a log
+	log=(char **)malloc(1*sizeof(char*));
+	log[0]=(char *)malloc(len*sizeof(char));
+	memcpy(log[0], thing, len*sizeof(char));
+	#ifdef DEBUG_LOGGING
+		printf("%s\n", log[0]);
+	#endif
+
+	logger(log, 1);
+}
+
 void instant_wb(char **things, int n){
 	logger(things, n);
 	write_back();

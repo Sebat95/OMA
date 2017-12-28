@@ -14,6 +14,8 @@ void start_timer();
 void stop_timer();
 //ask to log something; n is the number of string passed with things
 void logger(char **things, int n);
+//ask to log a string; len is its length
+void loggerSTR(char *thing, int len);
 //ask to log and directly write it on the file log.txt
 void instant_wb(char **things, int n);
 //flush the log buffer on file
