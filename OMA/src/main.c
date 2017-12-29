@@ -9,13 +9,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "OMA_libraries\initialization.h"
 #include "OMA_libraries\method2.h"
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P);
 
-int main(int argc, char* argv[]) // argv[1] = "instanceXX"
+int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total time to execute in minutes,
+								 // argv[3]= "XXXXX.txt" parameters file
 {
 	// CONSTANTS
 	const char* INSTANCE_PATH = "instances/";
@@ -38,12 +40,33 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX"
 	// DECISION VARIABLES
 	int *x; // x[i] = timeslot of exam i+1
 
+	//time to run in minutes
+	int ex_time;
+	double tm=clock()/CLOCKS_PER_SEC;
+
+	if(argc>4){
+		fprintf(stderr, "Too much arguments on the command line!\n");
+		return -1;
+	}
+	ex_time=atoi(argv[2]);
+	//arg[3] init file
+
+
+	if((ex_time*60) < ((clock()/CLOCKS_PER_SEC)-tm))
+		return 0;
+
 	// ##### PROBABILMENTE LA FUNZIONE SETUP SI PUò RENDERE PIù VELOCE!!! ###
 	setup(instance_name, &T, &E, &S, &n, &x, &students_per_exam); // read instance file and setup data structures
 
+	if((ex_time*60) < ((clock()/CLOCKS_PER_SEC)-tm))
+		return 0;
+
 	initialization(x, n, E, T); // find an initial solution
 
-	optimizationMethod2(x, T, E, S, n, students_per_exam, instance_name);
+	if((ex_time*60) < ((clock()/CLOCKS_PER_SEC)-tm))
+		return 0;
+
+	optimizationMethod2(x, T, E, S, n, students_per_exam, instance_name, ex_time - ((clock()/CLOCKS_PER_SEC)-tm)/60);
 	//optimizationMethod3(x, T, E, S, n, students_per_exam, NULL, instance_name);
 
 	return 0;

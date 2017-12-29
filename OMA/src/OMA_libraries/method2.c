@@ -103,6 +103,7 @@ int SINGLE_DIST=0, GROUP_DIST=1, ITERATIONS_DIST=1000;
 #include <math.h>
 #include <limits.h>
 #include <omp.h>
+#include <time.h>
 
 typedef struct {
 	int exam;
@@ -141,7 +142,7 @@ static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU
 static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T, int E, double actual_dist);
 // ** DEFINITIONS
 
-void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name) {
+void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name, double ex_time) {
 	long int iteration_counter = 0;
 	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trend = -1, temperature = 1, total_best_pen = INT_MAX;
 	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E], x_best[E], x_tot_best[E];
@@ -152,6 +153,9 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 	double randomness_single = RANDOMNESS_BEST_SINGLE, randomness_group = RANDOMNESS_BEST, dist = 0, delta_dist = 0, old_dist = 0, randomness_randomOrCheap_group = RANDOMNESS_RANDOMorCHEAP_GROUP, randomness_randomOrCheap_single = RANDOMNESS_RANDOMorCHEAP_SINGLE;
 	ExamPenalty *exam_penalty = malloc(E * sizeof(ExamPenalty));
 	int x_old_dist[E];
+
+
+	double end = ex_time*60 + (double)(clock() / CLOCKS_PER_SEC);
 
 
 	#ifdef LOG_METHOD2
@@ -169,7 +173,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 	neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
 
 	memcpy(x_old_dist, x, E * sizeof(int));
-	while (1) {
+	while ((double)(clock() / CLOCKS_PER_SEC) < end) {
 #ifdef DEBUG_METHOD2
 		memcpy(x_old, x, E*sizeof(int));
 		fprintf(stdout,
