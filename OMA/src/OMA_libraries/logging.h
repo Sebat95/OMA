@@ -8,6 +8,8 @@
 #ifndef SRC_OMA_LIBRARIES_LOGGING_H_
 #define SRC_OMA_LIBRARIES_LOGGING_H_
 
+//log on a specified file
+void logFILE_init(char *filename);
 //put them to compute time&CLKs of a certain piece of code and write it in a log
 //ONE TIMER MAXIMUM
 void start_timer();

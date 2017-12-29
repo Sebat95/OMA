@@ -51,7 +51,6 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total 
 	ex_time=atoi(argv[2]);
 	//argv[3] init file
 
-
 	if((ex_time*60) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
 
@@ -67,7 +66,7 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total 
 		return 0;
 
 	//last argument equal NULL if we want no to initialize the parameters
-	optimizationMethod2(x, T, E, S, n, students_per_exam, instance_name, ex_time - ((clock()/CLOCKS_PER_SEC)-tm)/60, argv[3]);
+	optimizationMethod2(x, T, E, S, n, students_per_exam, argv[1], ex_time - ((clock()/CLOCKS_PER_SEC)-tm)/60, argv[3]);
 	//optimizationMethod3(x, T, E, S, n, students_per_exam, NULL, instance_name);
 
 	return 0;

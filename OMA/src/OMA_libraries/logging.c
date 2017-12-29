@@ -12,7 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 #define MAX_PENDING_LOGS 5
+
 
 typedef struct single_log
 {
@@ -20,11 +22,20 @@ typedef struct single_log
 		int dim;
 }log;
 
+
 clock_t begin = 0;
 clock_t end = 0;
 log logs[MAX_PENDING_LOGS];
 int counter=0;
 int w_a=0; //write or append
+char filenm[100] = "log.txt";
+
+
+void logFILE_init(char *filename){
+	strcpy(filenm, "log_");
+	strcat(filenm, filename);
+	strcat(filenm, ".txt");
+}
 
 
 void write_back(){
@@ -39,7 +50,7 @@ void write_back(){
 	else
 		strcpy(file_mode, "a"); //if not append
 
-	if((fp = fopen("log.txt", file_mode)) == NULL)
+	if((fp = fopen(filenm, file_mode)) == NULL)
 	{
 		fprintf(stdout, "Error during 'log.txt' manipulation");
 		return;

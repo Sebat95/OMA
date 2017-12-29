@@ -164,6 +164,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 
 	#ifdef LOG_METHOD2
 		char log[500];
+		logFILE_init(instance_name);
 	#endif
 
 	if(param!=NULL){
@@ -1279,10 +1280,14 @@ static void *extract_pointer(int index){
 }
 
 static int globalPARAM_init(FILE *fp){
-	char buffer[500];
+	char buffer[500], param[100], log[500];
 	double value;
 	void *pointer_to_gv; //global variable
 	int cnt=0;
+
+	#ifdef LOG_METHOD2
+		loggerSTR("PARAMETERS (name value):\n", 50);
+	#endif
 
 	while(fgets(buffer, 500, fp)) {
 		if(!(strcmp(buffer, "\n")) || !(strncmp(buffer, "//", 2))) //check if line is or a comment or empty
@@ -1290,7 +1295,16 @@ static int globalPARAM_init(FILE *fp){
     	pointer_to_gv=extract_pointer(cnt);
     	if(pointer_to_gv==NULL)
     		return -1;
-	    sscanf(buffer, "%*s %lf %*s", &value);
+	    sscanf(buffer, "%s %lf %*s", param, &value);
+
+		#ifdef LOG_METHOD2
+	    	if(value==-1)
+	    		sprintf(log, "%s %.3lf\n", param, *((double*)pointer_to_gv));
+	    	else
+	    		sprintf(log, "%s %.3lf\n", param, value);
+	    	loggerSTR(log, 500);
+		#endif
+
 	    if(value==-1){
 	    	cnt++;
 	    	continue;
