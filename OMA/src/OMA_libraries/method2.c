@@ -1280,8 +1280,8 @@ static void *extract_pointer(int index){
 }
 
 static int globalPARAM_init(FILE *fp){
-	char buffer[500], param[100], log[500];
-	double value;
+	char buffer[500], param[100], log[500], standard[10];
+	double value, std;
 	void *pointer_to_gv; //global variable
 	int cnt=0;
 
@@ -1295,13 +1295,22 @@ static int globalPARAM_init(FILE *fp){
     	pointer_to_gv=extract_pointer(cnt);
     	if(pointer_to_gv==NULL)
     		return -1;
-	    sscanf(buffer, "%s %lf %*s", param, &value);
+	    sscanf(buffer, "%s %lf %*s %lf", param, &value, &std);
 
 		#ifdef LOG_METHOD2
-	    	if(value==-1)
-	    		sprintf(log, "%s %.3lf\n", param, *((double*)pointer_to_gv));
-	    	else
-	    		sprintf(log, "%s %.3lf\n", param, value);
+	    	if(value==-1){
+	    	    if(ceil(std)==std) //check if integer
+	    	    	sprintf(log, "%s %d\n", param, *((int*)pointer_to_gv));
+	    	    else
+	    	    	sprintf(log, "%s %.3lf\n", param, *((double*)pointer_to_gv));
+	    	}
+	    	else{
+	    	    if(ceil(value)==value) //check if integer
+	    	    	sprintf(log, "%s %d\n", param, (int)value);
+	    	    else
+	    	    	sprintf(log, "%s %.3lf\n", param, value);
+	    	}
+
 	    	loggerSTR(log, 500);
 		#endif
 
