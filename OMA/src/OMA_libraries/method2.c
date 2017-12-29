@@ -6,7 +6,7 @@
  */
 #define DEBUG_METHOD2
 #define LOG_METHOD2
-#define DEFINE_PARAM
+//#define DEFINE_PARAM
 
 #ifdef DEFINE_PARAM
 
@@ -140,9 +140,13 @@ static double computeDistance(int *x1, int *x2, int **n, int E, int T); // O(E^2
 static int destroySolution(int *x, int **n, int E, int T, int n_timeslot);
 static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU tl, int *group_positions, int **group_conflicts, ExamPenalty *exam_penalty);
 static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T, int E, double actual_dist);
-// ** DEFINITIONS
+//global variable file initialization
+static int globalPARAM_init(FILE *fp);
+static void *extract_pointer(int index);
 
-void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name, double ex_time) {
+
+
+void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name, double ex_time, char *param) {
 	long int iteration_counter = 0;
 	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trend = -1, temperature = 1, total_best_pen = INT_MAX;
 	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E], x_best[E], x_tot_best[E];
@@ -161,6 +165,29 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 	#ifdef LOG_METHOD2
 		char log[500];
 	#endif
+
+	if(param!=NULL){
+		FILE *fp;
+
+		fp=fopen(param, "r");
+		if(fp==NULL){
+			fprintf(stderr, "Error while opening parameters file\n");
+			exit(-1);
+		}
+
+		if(globalPARAM_init(fp)!=0){
+			fprintf(stderr, "Error(s) into parameters file\n");
+			exit(-1);
+		}
+
+		if(fclose(fp)!=0){
+			fprintf(stderr, "Error while closing parameters file\n");
+			exit(-1);
+		}
+
+
+	}
+
 
 
 	group_positions = malloc(T * sizeof(int));
@@ -1168,4 +1195,115 @@ static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T
 			return -1;
 	}
 	return dist;
+}
+
+static void *extract_pointer(int index){
+	switch(index){
+	case 0:
+		return (void *)&TABU_LENGTH;
+	case 1:
+		return (void *)&MIN_TABU_LENGTH;
+	case 2:
+		return (void *)&MAX_TABU_LENGTH;
+	case 3:
+		return (void *)&N_BEST;
+	case 4:
+		return (void *)&RANDOMNESS_BEST;
+	case 5:
+		return (void *)&RANDOMNESS_BEST_MIN;
+	case 6:
+		return (void *)&RANDOMNESS_BEST_MAX;
+	case 7:
+		return (void *)&TREND_THRESHOLD_BEST_RANDOM_GROUP;
+	case 8:
+		return (void *)&N_BEST_SINGLE;
+	case 9:
+		return (void *)&RANDOMNESS_BEST_SINGLE;
+	case 10:
+		return (void *)&RANDOMNESS_BEST_SINGLE_MIN ;
+	case 11:
+		return (void *)&RANDOMNESS_BEST_SINGLE_MAX;
+	case 12:
+		return (void *)&TREND_THRESHOLD_BEST_RANDOM_SINGLE;
+	case 13:
+		return (void *)&RANDOMNESS_RANDOMorCHEAP_GROUP;
+	case 14:
+		return (void *)&RANDOMNESS_RANDOMorCHEAP_GROUP_MIN;
+	case 15:
+		return (void *)&RANDOMNESS_RANDOMorCHEAP_GROUP_MAX;
+	case 16:
+		return (void *)&RANDOMNESS_RANDOMorCHEAP_SINGLE;
+	case 17:
+		return (void *)&RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN;
+	case 18:
+		return (void *)&RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX;
+	case 19:
+		return (void *)&ALFA;
+	case 20:
+		return (void *)&BETA;
+	case 21:
+		return (void *)&ITERATION;
+	case 22:
+		return (void *)&ITERATION_THRESHOLD;
+	case 23:
+		return (void *)&IT_GROUP_BEST_RANDOM;
+	case 24:
+		return (void *)&IT_SINGLE_BEST_RANDOM;
+	case 25:
+		return (void *)&IT_GROUP_RANDOM;
+	case 26:
+		return (void *)&IT_SINGLE_RANDOM;
+	case 27:
+		return (void *)&NO_IMPR_DECREASE;
+	case 28:
+		return (void *)&DESTROY_THRESHOLD;
+	case 29:
+		return (void *)&DESTROY_GROUP;
+	case 30:
+		return (void *)&DESTROY_SINGLE;
+	case 31:
+		return (void *)&N_TIMESLOT;
+	case 32:
+		return (void *)&TEMP_PAR;
+	case 33:
+		return (void *)&DIST_PAR;
+	case 34:
+		return (void *)&SINGLE_DIST;
+	case 35:
+		return (void *)&GROUP_DIST;
+	case 36:
+		return (void *)&ITERATIONS_DIST;
+	default:
+		return NULL;
+	}
+}
+
+static int globalPARAM_init(FILE *fp){
+	char buffer[500];
+	double value;
+	void *pointer_to_gv; //global variable
+	int cnt=0;
+
+	while(fgets(buffer, 500, fp)) {
+		if(!(strcmp(buffer, "\n")) || !(strncmp(buffer, "//", 2))) //check if line is or a comment or empty
+			continue;
+    	pointer_to_gv=extract_pointer(cnt);
+    	if(pointer_to_gv==NULL)
+    		return -1;
+	    sscanf(buffer, "%*s %lf %*s", &value);
+	    if(value==-1){
+	    	cnt++;
+	    	continue;
+	    }
+	    if(ceil(value)==value) //check if integer
+	    	*((int*)pointer_to_gv)=(int)value;
+	    else
+	    	*((double*)pointer_to_gv)=(double)value;
+	    cnt++;
+	}
+
+	if(cnt<37) //check if all global variables where present
+		return -1;
+
+	return 0;
 }
