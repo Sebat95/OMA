@@ -147,16 +147,7 @@ static void *extract_pointer(int index);
 
 
 void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name, double ex_time, char *param) {
-	long int iteration_counter = 0;
-	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trend = -1, temperature = 1, total_best_pen = INT_MAX;
-	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E], x_best[E], x_tot_best[E];
-	int actual_neighborhood = 0;
-	int last_improvements_number = -1, no_improvement_times = 0;
-	TABU tl = new_TabuList(TABU_LENGTH, MIN_TABU_LENGTH, MAX_TABU_LENGTH);
-	int *group_positions, **group_conflicts;
-	double randomness_single = RANDOMNESS_BEST_SINGLE, randomness_group = RANDOMNESS_BEST, dist = 0, delta_dist = 0, old_dist = 0, randomness_randomOrCheap_group = RANDOMNESS_RANDOMorCHEAP_GROUP, randomness_randomOrCheap_single = RANDOMNESS_RANDOMorCHEAP_SINGLE;
-	ExamPenalty *exam_penalty = malloc(E * sizeof(ExamPenalty));
-	int x_old_dist[E];
+
 
 
 	double end = ex_time*60 + (double)(clock() / CLOCKS_PER_SEC);
@@ -185,9 +176,18 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 			fprintf(stderr, "Error while closing parameters file\n");
 			exit(-1);
 		}
-
-
 	}
+
+	long int iteration_counter = 0;
+	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trend = -1, temperature = 1, total_best_pen = INT_MAX;
+	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E], x_best[E], x_tot_best[E];
+	int actual_neighborhood = 0;
+	int last_improvements_number = -1, no_improvement_times = 0;
+	TABU tl = new_TabuList(TABU_LENGTH, MIN_TABU_LENGTH, MAX_TABU_LENGTH);
+	int *group_positions, **group_conflicts;
+	double randomness_single = RANDOMNESS_BEST_SINGLE, randomness_group = RANDOMNESS_BEST, dist = 0, delta_dist = 0, old_dist = 0, randomness_randomOrCheap_group = RANDOMNESS_RANDOMorCHEAP_GROUP, randomness_randomOrCheap_single = RANDOMNESS_RANDOMorCHEAP_SINGLE;
+	ExamPenalty *exam_penalty = malloc(E * sizeof(ExamPenalty));
+	int x_old_dist[E];
 
 
 
