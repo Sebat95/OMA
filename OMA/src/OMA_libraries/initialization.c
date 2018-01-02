@@ -1,10 +1,11 @@
+
 /*
  * initialization.c
  *
  *  Created on: 03 dic 2017
  *      Author: Nicola
  */
-#define DEBUG_INITIALIZATION 1
+//#define DEBUG_INITIALIZATION 1
 
 #define RANDOMNESS_INIT 0.2
 #define TABU_LENGTH_INIT 5
@@ -105,22 +106,24 @@ void initialization(int *x, int **n, int E, int T)
 		fprintf(stdout, "Greedy algorithm for the initialization didn't found a feasible solution.\nA metaheuristic is required.\n");
 #endif
 
-	printf("greedy finita!\n");
-	fflush(stdout);
-#pragma omp parallel
-		{
-		while(!found)
-		{
-			int x_thread[E];
-			printf("thread  %d ha iniziato la metaheuristica\n", omp_get_thread_num());
-			fflush(stdout);
-			memcpy(x_thread, x, E*sizeof(int));
-			initializationMetaheuristic_tabuSearch(x_thread, n, E, T);
-			printf("thread  %d ha finito la metaheuristica\n", omp_get_thread_num());
-			fflush(stdout);
-			memcpy(x, x_thread, E*sizeof(int));
-			found = 1;
-		}
+	#pragma omp parallel
+			{
+			while(!found)
+			{
+				int x_thread[E];
+#ifdef DEBUG_INITIALIZATION
+				printf("thread  %d ha iniziato la metaheuristica\n", omp_get_thread_num());
+				fflush(stdout);
+#endif
+				memcpy(x_thread, x, E*sizeof(int));
+				initializationMetaheuristic_tabuSearch(x_thread, n, E, T);
+#ifdef DEBUG_INITIALIZATION
+				printf("thread  %d ha finito la metaheuristica\n", omp_get_thread_num());
+				fflush(stdout);
+#endif
+				memcpy(x, x_thread, E*sizeof(int));
+				found = 1;
+			}
 		}
 	}
 
@@ -156,7 +159,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 	TABU tl = new_TabuList(TABU_LENGTH_INIT, TABU_LENGTH_INIT, TABU_LENGTH_INIT);
 	Conflict *conflict_for_timeslot = malloc(T * sizeof(Conflict));
 
-	srand(time(NULL)); // NON DETERMINISMO: ogni esecuzione è diversa dalle altre
+	srand(time(NULL)); // each execution may be different
 
 	while(1)
 	{
@@ -227,28 +230,6 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, (i+j)%E);
 		*/
 
-		/*// Possibility 4: select an exam with less conflict in other timeslots
-		for(i=0;i<E;i++) mark[i] = 0;
-		for(i=0;i<E;i++)
-			if(x[i] == candidate_timeslot)
-				for(j=0;j<E;j++)
-					if(x[j] != candidate_timeslot && n[i][j] && j != to_swap && j!=i)
-					{
-						mark[i]++;
-						mark[j]++;
-					}
-		qsort(mark, E, sizeof(int), compare_int_decreasing);
-		do
-		{
-			for(i=0;i<E && mark[i] > 0;i++)
-			{
-				if(rand()/(double)RAND_MAX < RANDOMNESS_INIT)
-					continue;
-				break;
-			}
-		}while(i == E || mark[i] != 0);
-		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, mark[i]);
-		*/
 	}
 	free(conflict_for_timeslot);
 	delete_TabuList(tl);

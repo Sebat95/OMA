@@ -4,9 +4,11 @@
  *  Created on: 02 dic 2017
  *      Author: Nicola
  */
-#define DEBUG_METHOD2
-#define LOG_METHOD2
+//#define DEBUG_METHOD2
+//#define DEBUG_METHOD2_CHECK
+//#define LOG_METHOD2
 //#define DEFINE_PARAM
+//#define CALCOLA_PARAMETRI
 
 #ifdef DEFINE_PARAM
 
@@ -63,33 +65,44 @@
 #define GROUP_DIST 1
 #define ITERATIONS_DIST 1000
 
+#define DYNAMIC_PARAMETERS 1
+#define DYNAMIC_PARAMETERS 1
+#define DYNAMIC_TABULIST 1
+#define TABULIST_INCREASING 1
+#define DYNAMIC_RANDOMNESS_SINGLE 0
+#define RANDOMNESS_SINGLE_INCREASING 0
+#define DYNAMIC_RANDOMNESS_GROUP 0
+#define RANDOMNESS_GROUP_INCREASING 0
+#define DYNAMIC_RANDOMorCHEAP_SINGLE 1
+#define RANDOMorCHEAP_SINGLE_INCREASING 0
+#define DYNAMIC_RANDOMorCHEAP_GROUP 1
+#define RANDOMorCHEAP_GROUP_INCREASING 0
+
+#define DESTROY_CURRENTorBEST 1
+#define DESTROY_BESTFIRSTorRANDOM 0
+
 #endif
 
 #ifndef DEFINE_PARAM
 
 int TABU_LENGTH=10, MIN_TABU_LENGTH=1, MAX_TABU_LENGTH=10;
-
 int N_BEST=100;
 double RANDOMNESS_BEST=0.1, RANDOMNESS_BEST_MIN=0.05, RANDOMNESS_BEST_MAX=0.2, TREND_THRESHOLD_BEST_RANDOM_GROUP=0.05;
-
 int N_BEST_SINGLE=200;
 double RANDOMNESS_BEST_SINGLE=0.2, RANDOMNESS_BEST_SINGLE_MIN=0.1, RANDOMNESS_BEST_SINGLE_MAX=0.5, TREND_THRESHOLD_BEST_RANDOM_SINGLE=0.1;
-
 double RANDOMNESS_RANDOMorCHEAP_GROUP=0.8, RANDOMNESS_RANDOMorCHEAP_GROUP_MIN=0.7, RANDOMNESS_RANDOMorCHEAP_GROUP_MAX=0.9, RANDOMNESS_RANDOMorCHEAP_SINGLE=0.5, RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN=0.5, RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX=0.9;
-
 double ALFA=0.3, BETA=0.4;
 int ITERATION=100, ITERATION_THRESHOLD=5000;
-
 int IT_GROUP_BEST_RANDOM=100, IT_SINGLE_BEST_RANDOM=100, IT_GROUP_RANDOM=100, IT_SINGLE_RANDOM=100;
-
 int NO_IMPR_DECREASE=100;
-
 int DESTROY_THRESHOLD=500, DESTROY_GROUP=500, DESTROY_SINGLE=500, N_TIMESLOT=3;
-
 double TEMP_PAR=0.995;
-
 double DIST_PAR=0.9;
 int SINGLE_DIST=0, GROUP_DIST=1, ITERATIONS_DIST=1000;
+int DYNAMIC_PARAMETERS = 1, DYNAMIC_TABULIST = 1, TABULIST_INCREASING = 1, DYNAMIC_RANDOMNESS_SINGLE = -1;
+int RANDOMNESS_SINGLE_INCREASING = 0, DYNAMIC_RANDOMNESS_GROUP = 0, RANDOMNESS_GROUP_INCREASING = 0;
+int DYNAMIC_RANDOMorCHEAP_SINGLE = 1, RANDOMorCHEAP_SINGLE_INCREASING = 0, DYNAMIC_RANDOMorCHEAP_GROUP = 1, RANDOMorCHEAP_GROUP_INCREASING = 0;
+int DESTROY_CURRENTorBEST = 1, DESTROY_BESTFIRSTorRANDOM = 0;
 
 #endif
 
@@ -139,39 +152,34 @@ static void update_parameter(int no_impr_times, double trend, double *randomness
 static double computeDistance(int *x1, int *x2, int **n, int E, int T); // O(E^2)
 static int destroySolution(int *x, int **n, int E, int T, int n_timeslot);
 static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU tl, int *group_positions, int **group_conflicts, ExamPenalty *exam_penalty);
+static void destroySolution_swappingRandom(int *x, int **n, int E, int T, TABU tl);
 static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T, int E, double actual_dist);
+static void printBestSolution(int *x, int E, char *instance_name);
 //global variable file initialization
 static int globalPARAM_init(FILE *fp);
 static void *extract_pointer(int index);
 
+void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_name, double ex_time, char *param) {
 
-
-void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per_exam, char *instance_name, double ex_time, char *param) {
-
-
-
-	double end = ex_time*60 + (double)(clock() / CLOCKS_PER_SEC);
-
+	double end = ex_time*CLOCKS_PER_SEC + (double)clock(); // set end time in clock cycle number for timeout
 
 	#ifdef LOG_METHOD2
 		char log[500];
 		logFILE_init(instance_name);
 	#endif
 
-	if(param!=NULL){
+	if(param!=NULL)
+	{
 		FILE *fp;
-
 		fp=fopen(param, "r");
 		if(fp==NULL){
 			fprintf(stderr, "Error while opening parameters file\n");
 			exit(-1);
 		}
-
 		if(globalPARAM_init(fp)!=0){
 			fprintf(stderr, "Error(s) into parameters file\n");
 			exit(-1);
 		}
-
 		if(fclose(fp)!=0){
 			fprintf(stderr, "Error while closing parameters file\n");
 			exit(-1);
@@ -179,8 +187,8 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 	}
 
 	long int iteration_counter = 0;
-	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trend = -1, temperature = 1, total_best_pen = INT_MAX;
-	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E], x_best[E], x_tot_best[E];
+	double initial_pen, pen, old_pen = 0, best_pen = INT_MAX, trendMatematici = -1, trend = INT_MAX, temperature = 1, total_best_pen = INT_MAX;
+	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_old[E], x_best[E];
 	int actual_neighborhood = 0;
 	int last_improvements_number = -1, no_improvement_times = 0;
 	TABU tl = new_TabuList(TABU_LENGTH, MIN_TABU_LENGTH, MAX_TABU_LENGTH);
@@ -188,22 +196,26 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 	double randomness_single = RANDOMNESS_BEST_SINGLE, randomness_group = RANDOMNESS_BEST, dist = 0, delta_dist = 0, old_dist = 0, randomness_randomOrCheap_group = RANDOMNESS_RANDOMorCHEAP_GROUP, randomness_randomOrCheap_single = RANDOMNESS_RANDOMorCHEAP_SINGLE;
 	ExamPenalty *exam_penalty = malloc(E * sizeof(ExamPenalty));
 	int x_old_dist[E];
+	clock_t best_sol_time;
 
-
-
-	group_positions = malloc(T * sizeof(int));
-	group_conflicts = malloc(T * sizeof(int*));
+	group_positions = malloc(T * sizeof(int)); // used in neighborhood1 in order to understand where "group of exams" have been moved
+	group_conflicts = malloc(T * sizeof(int*)); // used in neighborhood1 in order to efficiently compute penalty
 	for (i = 0; i < T; i++)
 		group_conflicts[i] = malloc(T * sizeof(int));
 
 	initial_pen = pen = compute_penalty_complete(x, n, E);
 
-	neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
+	neighborhood1_setup(x, n, T, E, group_positions, group_conflicts); // the algorithm starts from neighborhood1
+
+#ifdef LOG_METHOD2 // CSV header
+	sprintf(log, "Iteration,Penalty,BestPenalty,TotalBestPenalty,NoImprovements,NeighborhoodStructure,TL_length,TrendMatematici,Trend,Temperature,Dist,DeltaDist,RandomnessSingle,RandomnessGroup,RandomOrCheapSingle,RandomOrCheapGroup,InitialPenalty\n");
+	loggerSTR(log, 500);
+#endif
 
 	memcpy(x_old_dist, x, E * sizeof(int));
-	while ((double)(clock() / CLOCKS_PER_SEC) < end) {
+	while((double)clock() < end)
+	{
 #ifdef DEBUG_METHOD2
-		memcpy(x_old, x, E*sizeof(int));
 		fprintf(stdout,
 				"It:%3d Neigh:%d TL_len:%d Trend:%2.3f RandSingle:%2.2f RandGroup:%2.2f Dist:%.5f DeltaDist:%.5f Temp:%+3.3f NoImpr:%d Pen:%5.3f Best:%5.3f TotBest:%5.3f Init:%5.3f\n",
 				(int) iteration_counter, actual_neighborhood, tabu_length, trend,
@@ -212,22 +224,20 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 				initial_pen / S);
 #endif
 #ifdef LOG_METHOD2
-		memcpy(x_old, x, E*sizeof(int));
 		sprintf(log,
-				"It:%3d, Neigh:%d, TL_len:%d, Trend:%2.3f, RandSingle:%2.2f, RandGroup:%2.2f, Dist:%.5f, DeltaDist:%.5f, Temp:%+3.3f, NoImpr:%d, Pen:%5.3f, Best:%5.3f, TotBest:%5.3f, Init:%5.3f\n",
-				(int) iteration_counter, actual_neighborhood, tabu_length, trend,
-				randomness_single, randomness_group, dist, delta_dist,
-				temperature, no_improvement_times, pen / S, best_pen / S, total_best_pen / S,
-				initial_pen / S);
+				"%d,%f,%f,%f,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+				(int)iteration_counter, pen/S, best_pen/S, total_best_pen/S, no_improvement_times, actual_neighborhood, tabu_length,
+				trendMatematici, trend, temperature, dist, delta_dist, randomness_single, randomness_group, randomness_randomOrCheap_single, randomness_randomOrCheap_group, initial_pen/S);
 		loggerSTR(log, 500);
 #endif
 
-
+#ifdef CALCOLA_PARAMETRI
 		if(partial_iteration == 0) {
 			old_dist = dist;
 			dist = computeDistance(x, x_old_dist, n, E, T); // PROVARE A CALCOLARE LA DISTANZA FACENDO DESTROY CON SWAP
 			delta_dist = DIST_PAR * delta_dist + (1 - DIST_PAR) * fabs(dist - old_dist);
 		}
+#endif
 		if (no_improvement_times >= DESTROY_THRESHOLD) {
 			no_improvement_times = 0;
 			partial_iteration = 0;
@@ -236,16 +246,27 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 
 			//pen = destroySolution(x, n, E, T, N_TIMESLOT); NON FUNZIONA CON I THREAD (debuggare o magari passare al random)
 			//pen = destroySolution_swapping(x, n, E, T, pen, tl, group_positions, group_conflicts, exam_penalty);
-
-			memcpy(x, x_best, E*sizeof(E));
-			pen = destroySolution_swapping(x, n, E, T, best_pen, tl, group_positions, group_conflicts, exam_penalty);
-
+			printf("DISTRUZIONE@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
+			if(DESTROY_CURRENTorBEST == 0) // if ==1 use current, if ==0 use best solution
+			{
+				memcpy(x, x_best, E*sizeof(E));
+				pen = best_pen;
+			}
+			if(DESTROY_BESTFIRSTorRANDOM == 1) // if ==1 use bestFirst function, if ==0 use random function
+				pen = destroySolution_swapping(x, n, E, T, pen, tl, group_positions, group_conflicts, exam_penalty);
+			else
+			{
+				destroySolution_swappingRandom(x, n, E, T, tl);
+				pen = compute_penalty_complete(x, n, E);
+			}
+			//setup again data structure
 			actual_neighborhood = 0;
 			neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
 			continue; // go to the next iteration of the while
 		}
 
-		update_parameter(no_improvement_times, trend, &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
+		if(DYNAMIC_PARAMETERS==1)
+			update_parameter(no_improvement_times, trend, &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
 
 		switch (actual_neighborhood) {
 		case 0:
@@ -311,7 +332,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 			//pen = neighborhood2_random(x, n, T, E, tl, exam_penalty, pen);
 			break;
 		}
-/*#ifdef DEBUG_METHOD2
+#ifdef DEBUG_METHOD2_CHECK
 		int j;
 		if(pen != compute_penalty_complete(x, n, E))
 		{
@@ -328,59 +349,60 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, int *students_per
 					fprintf(stdout, "SOLUZIONE UNFEASIBLE!!!!@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ò");
 					exit(1);
 				}
-#endif*/
+#endif
 
 		iteration_counter++;
 		partial_iteration++;
 		if (best_pen > pen) {
 			improvements_number++;
 			best_pen = pen;
-			memcpy(x_best, x, E*sizeof(E));
+			memcpy(x_best, x, E*sizeof(int));
 			if(total_best_pen > best_pen)
 			{
 				total_best_pen = best_pen;
-				memcpy(x_tot_best, x, E*sizeof(E));
+				best_sol_time = clock();
+				int min = (int)((double)best_sol_time/CLOCKS_PER_SEC/60);
+				float sec = ((double)best_sol_time/CLOCKS_PER_SEC)-60*min;
+				printf("New best = %f at time %.3f (%3d min %2.3f sec)\n", total_best_pen / S, (double) best_sol_time / CLOCKS_PER_SEC, min, sec); // in order to understand how much time is required to get the best solution and how often the best solution is updated
+				fflush(stdout);
+				printBestSolution(x, E, instance_name);
 			}
 		}
 
+#ifdef CALCOLA_PARAMETRI
 		trend = (improvements_number < partial_iteration) ?
 				(double) improvements_number / (partial_iteration - improvements_number) :
 				INT_MAX;
 		temperature = TEMP_PAR * temperature + (1 - TEMP_PAR) * (1000000 * improvements_number / iteration_counter * (double) (fabs(pen - old_pen)) / pen);
 		old_pen = pen;
 		// MATEMATICI
-		/*int B = 0, pen_norm, initial_penalties[ITERATION], tmp;
+		int B = 0, pen_norm, initial_penalties[ITERATION], tmp;
 		if(partial_iteration <= ITERATION)
 		 {
-		 //pen_norm = pen;
-		 pen_norm = 1;
-		 initial_penalties[partial_iteration-1] = pen/S;
-		 if(iteration_counter == ITERATION)
-		 {
-		 trend = (pen/(pen_norm*S) - initial_penalties[0]/pen_norm) / (ITERATION-1);
-		 for(i=0; i<ITERATION; i++)
-		 B += initial_penalties[i]/pen_norm - (i+1)*trend;
-		 B = B / ITERATION;
-		 }
-		 }
-		 else
-		 {
-		 tmp = B;
-		 B = ALFA*pen/(S*pen_norm) + (1-ALFA)*(tmp + trend);
-		 trend = BETA*(B - tmp) + (1-BETA) * trend;
-
-		 if(trend > 0.01 && tabu_length < MAX_TABU_LENGTH)
-		 tabu_length = increase_TabuList(tl);
-		 if(trend < 0.0001 && tabu_length < MIN_TABU_LENGTH)
-		 tabu_length = decrease_TabuList(tl);
-		 }*/
+			 //pen_norm = pen;
+			 pen_norm = 1;
+			 initial_penalties[partial_iteration-1] = pen/S;
+			 if(iteration_counter == ITERATION)
+			 {
+				 trendMatematici = (pen/(pen_norm*S) - initial_penalties[0]/pen_norm) / (ITERATION-1);
+				 for(i=0; i<ITERATION; i++)
+				 B += initial_penalties[i]/pen_norm - (i+1)*trendMatematici;
+				 B = B / ITERATION;
+			 }
+			 }
+			 else
+			 {
+				 tmp = B;
+				 B = ALFA*pen/(S*pen_norm) + (1-ALFA)*(tmp + trendMatematici);
+				 trendMatematici = BETA*(B - tmp) + (1-BETA) * trendMatematici;
+			 }
+#endif
 	}
-
+	delete_TabuList(tl);
 }
 
 // 1 NEIGHBORHOOD STRUCTURE: to swap entire group of exam (corrisponding to a timeslot)
-static int neighborhood1_bestOnly(int *x, int **n, int T, int E, TABU tl,
-		int actual_pen) {
+static int neighborhood1_bestOnly(int *x, int **n, int T, int E, TABU tl, int actual_pen) {
 	int i, group1 = rand() % T, group2 = rand() % T;
 	int best_group1 = -1, best_group2 = -1, best = INT_MAX, pen;
 
@@ -1021,15 +1043,18 @@ static void compute_ordered_exam_penalty(ExamPenalty *ordered, ExamPenalty *pena
 		}
 	}
 }
-
 // UTILITIES
 static int compute_penalty_complete(int *x, int **n, int E) // O(E^2)
 {
 	int i, j, pen = 0;
+//#pragma omp parallel default(none) shared(x, n, pen, E) private(i, j)
+//{
+//#pragma omp for schedule(dynamic)
 	for (i = 0; i < E; i++)
 		for (j = i + 1; j < E; j++)
 			if (abs(x[i] - x[j]) <= 5 && n[i][j])
 				pen += (int) pow(2, 5 - abs(x[i] - x[j])) * n[i][j];
+//}
 	return pen; // we have to count 2 times each combination
 }
 static int update_penalty(int *x, int **n, int E, int old_pen, int to_swap,	int old_timeslot, int new_timeslot) // O(E)
@@ -1053,14 +1078,41 @@ static void update_parameter(int no_impr_times, double trend, double *randomness
 	// NOTA: PER ORA TREND NON è USATO
 	double var = (double) no_impr_times / DESTROY_THRESHOLD; // between 0 and 1
 
-	*tabu_length_P = update_TabuList(tl, MIN_TABU_LENGTH + var * (MAX_TABU_LENGTH - MIN_TABU_LENGTH));
-	//*tabu_length_P = update_TabuList(tl, MAX_TABU_LENGTH + var*(MIN_TABU_LENGTH - MAX_TABU_LENGTH));
-	//*randomness_single_P = RANDOMNESS_BEST_SINGLE_MIN + var * (RANDOMNESS_BEST_SINGLE_MAX - RANDOMNESS_BEST_SINGLE_MIN);
-	//*randomness_group_P = RANDOMNESS_BEST_MIN + var * (RANDOMNESS_BEST_MAX - RANDOMNESS_BEST_MIN);
-//	*randomness_randomOrCheap_group_P = RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN + var * (RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX - RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN);
-//	*randomness_randomOrCheap_single_P = RANDOMNESS_RANDOMorCHEAP_GROUP_MIN + var * (RANDOMNESS_RANDOMorCHEAP_GROUP_MAX - RANDOMNESS_RANDOMorCHEAP_GROUP_MIN);
-	*randomness_randomOrCheap_group_P = RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX + var * (RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN - RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX);
-	*randomness_randomOrCheap_single_P = RANDOMNESS_RANDOMorCHEAP_GROUP_MAX + var * (RANDOMNESS_RANDOMorCHEAP_GROUP_MIN - RANDOMNESS_RANDOMorCHEAP_GROUP_MAX);
+	if(DYNAMIC_TABULIST == 1)
+	{
+		if(TABULIST_INCREASING == 1)
+			*tabu_length_P = update_TabuList(tl, MIN_TABU_LENGTH + var * (MAX_TABU_LENGTH - MIN_TABU_LENGTH));
+		else
+			*tabu_length_P = update_TabuList(tl, MAX_TABU_LENGTH + var*(MIN_TABU_LENGTH - MAX_TABU_LENGTH));
+	}
+	if(DYNAMIC_RANDOMNESS_SINGLE == 1)
+	{
+		if(RANDOMNESS_SINGLE_INCREASING == 1)
+			*randomness_single_P = RANDOMNESS_BEST_SINGLE_MIN + var * (RANDOMNESS_BEST_SINGLE_MAX - RANDOMNESS_BEST_SINGLE_MIN);
+		else
+			*randomness_single_P = RANDOMNESS_BEST_SINGLE_MAX + var * (RANDOMNESS_BEST_SINGLE_MIN - RANDOMNESS_BEST_SINGLE_MAX);
+	}
+	if(DYNAMIC_RANDOMNESS_GROUP == 1)
+	{
+		if(RANDOMNESS_GROUP_INCREASING == 1)
+			*randomness_group_P = RANDOMNESS_BEST_MIN + var * (RANDOMNESS_BEST_MAX - RANDOMNESS_BEST_MIN);
+		else
+			*randomness_group_P = RANDOMNESS_BEST_MAX + var * (RANDOMNESS_BEST_MIN - RANDOMNESS_BEST_MAX);
+	}
+	if(DYNAMIC_RANDOMorCHEAP_SINGLE == 1)
+	{
+		if(RANDOMorCHEAP_SINGLE_INCREASING == 1)
+			*randomness_randomOrCheap_single_P = RANDOMNESS_RANDOMorCHEAP_GROUP_MIN + var * (RANDOMNESS_RANDOMorCHEAP_GROUP_MAX - RANDOMNESS_RANDOMorCHEAP_GROUP_MIN);
+		else
+			*randomness_randomOrCheap_single_P = RANDOMNESS_RANDOMorCHEAP_GROUP_MAX + var * (RANDOMNESS_RANDOMorCHEAP_GROUP_MIN - RANDOMNESS_RANDOMorCHEAP_GROUP_MAX);
+	}
+	if(DYNAMIC_RANDOMorCHEAP_GROUP == 1)
+	{
+		if(RANDOMorCHEAP_GROUP_INCREASING == 1)
+			*randomness_randomOrCheap_group_P = RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN + var * (RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX - RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN);
+		else
+			*randomness_randomOrCheap_group_P = RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX + var * (RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN - RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX);
+	}
 }
 static double computeDistance(int *x1, int *x2, int **n, int E, int T) // O(E^2) DA OTTIMIZZARE !!!!!!!!!!!!!!!!!!!!!!!!! (es. se non uso il SINGLE_DIST)
 {
@@ -1197,7 +1249,6 @@ static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T
 	}
 	return dist;
 }
-
 static void *extract_pointer(int index){
 	switch(index){
 	case 0:
@@ -1274,13 +1325,39 @@ static void *extract_pointer(int index){
 		return (void *)&GROUP_DIST;
 	case 36:
 		return (void *)&ITERATIONS_DIST;
+	case 37:
+		return (void *)&DYNAMIC_PARAMETERS;
+	case 38:
+		return (void *)&DYNAMIC_TABULIST;
+	case 39:
+		return (void *)&TABULIST_INCREASING;
+	case 40:
+		return (void *)&DYNAMIC_RANDOMNESS_SINGLE;
+	case 41:
+		return (void *)&RANDOMNESS_SINGLE_INCREASING;
+	case 42:
+		return (void *)&DYNAMIC_RANDOMNESS_GROUP;
+	case 43:
+		return (void *)&RANDOMNESS_GROUP_INCREASING;
+	case 44:
+		return (void *)&DYNAMIC_RANDOMorCHEAP_SINGLE;
+	case 45:
+		return (void *)&RANDOMorCHEAP_SINGLE_INCREASING;
+	case 46:
+		return (void *)&DYNAMIC_RANDOMorCHEAP_GROUP;
+	case 47:
+		return (void *)&RANDOMorCHEAP_GROUP_INCREASING;
+	case 48:
+		return (void *)&DESTROY_CURRENTorBEST;
+	case 49:
+		return (void *)&DESTROY_BESTFIRSTorRANDOM;
 	default:
 		return NULL;
 	}
 }
-
 static int globalPARAM_init(FILE *fp){
-	char buffer[500], param[100], log[500], standard[10];
+	static int N_PARAMETERS = 50;
+	char buffer[500], param[100], log[500];
 	double value, std;
 	void *pointer_to_gv; //global variable
 	int cnt=0;
@@ -1314,6 +1391,21 @@ static int globalPARAM_init(FILE *fp){
 	    	loggerSTR(log, 500);
 		#endif
 
+	    	if(value==-1){
+	    	    if(ceil(std)==std) //check if integer
+	    	    	sprintf(log, "%s %d\n", param, *((int*)pointer_to_gv));
+	    	    else
+	    	    	sprintf(log, "%s %.3lf\n", param, *((double*)pointer_to_gv));
+	    	}
+	    	else{
+	    	    if(ceil(value)==value) //check if integer
+	    	    	sprintf(log, "%s %d\n", param, (int)value);
+	    	    else
+	    	    	sprintf(log, "%s %.3lf\n", param, value);
+	    	}
+
+	    	printf("%s", log);
+
 	    if(value==-1){
 	    	cnt++;
 	    	continue;
@@ -1325,8 +1417,63 @@ static int globalPARAM_init(FILE *fp){
 	    cnt++;
 	}
 
-	if(cnt<37) //check if all global variables where present
+	if(cnt<N_PARAMETERS) //check if all global variables where present
 		return -1;
 
 	return 0;
+}
+static void printBestSolution(int *x, int E, char *instance_name)
+{
+	int i;
+	char file_name[50];
+	strcpy(file_name, instance_name); strcat(file_name, "_OMAAL_group21.sol");
+	FILE *fp = fopen(file_name, "w");
+	if(fp == NULL)
+	{
+		fprintf(stderr, "Error while opening file %s.\n", file_name);
+		exit(-1);
+	}
+	for(i=0; i<E; i++)
+		fprintf(fp, "%d %d\n", i+1, x[i]+1);
+	fclose(fp);
+}
+static void destroySolution_swappingRandom(int *x, int **n, int E, int T, TABU tl)
+{
+	int iteration = 0, i, j, counter, N_ITERATION = 10, N_SINGLE = 200, N_GROUP = 50;
+	int to_swap;
+	while(iteration < N_ITERATION)
+	{
+		// swap single exams
+		for(counter = 0; counter < N_SINGLE; counter++)
+		{
+			to_swap = rand() % E;
+			for(i=0; i<T; i++)
+			{
+				if(check_TabuList(tl, to_swap, i, 2)) // not allowed move
+					continue;
+				for(j=0; j<E; j++)
+					if(x[j] == i && n[to_swap][j]) // unfeasible move
+						break;
+				if(j!=E)
+					continue;
+				insert_TabuList(tl, to_swap, x[to_swap], 2);
+				x[to_swap] = i;
+			}
+		}
+		// swap timeslot
+		for(counter = 0; counter < N_GROUP; counter++)
+		{
+			to_swap = rand() % T;
+			for(i=rand()%T, j=0; (i==to_swap || check_TabuList(tl, (to_swap>i)?to_swap:i, (to_swap>i)?i:to_swap, 3)) && j<T; i=(i+1)%T, j++);
+			if(j==T) // no possible swap for timeslot to_swap
+				continue;
+			for(j=0; j<E; j++)
+				if(x[j]==to_swap)
+					x[j] = i;
+				else if(x[j]==i)
+					x[j] = to_swap;
+			insert_TabuList(tl, (to_swap>i)?to_swap:i, (to_swap>i)?i:to_swap, 3);
+		}
+		iteration++;
+	}
 }

@@ -4,7 +4,7 @@
  *  Created on: 02 dic 2017
  *      Author: Nicola
  */
-#define DEBUG_MAIN
+//#define DEBUG_MAIN
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,9 +14,9 @@
 #include "OMA_libraries\initialization.h"
 #include "OMA_libraries\method2.h"
 
-void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P, int **students_per_exam_P);
+void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P);
 
-int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total time to execute in minutes,
+int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total time to execute in seconds,
 								 // argv[3]= "XXXXX.txt" parameters file
 {
 	// CONSTANTS
@@ -29,14 +29,6 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total 
 	int T, E, S; // number of timeslots, exams and students
 	int **n; // n[i,j] is the number of students enrolled in exams i and j (conflictual)
 
-	int *students_per_exam; // number of students enrolled in each exam
-	/**********************************
-		 * NOTA: dai dati che ci da Manerba, potremmo salvare anche a che esami è iscritto
-		 * ogni studente, usando quest'informazione per migliorare la soluzione iniziale/generazione del neighborhood
-
-			EDIT: IMPLEMENTATO con conflictual_students, ma è computazionalmente costoso (SE NON LO USIAMO DOBBIAMO TOGLIERLO)
-	 */
-
 	// DECISION VARIABLES
 	int *x; // x[i] = timeslot of exam i+1
 
@@ -44,35 +36,35 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total 
 	int ex_time;
 	double tm=clock()/CLOCKS_PER_SEC;
 
-	if(argc>4){
+	if(argc>4)
+	{
 		fprintf(stderr, "Too much arguments on the command line!\n");
 		return -1;
 	}
 	ex_time=atoi(argv[2]);
 	//argv[3] init file
 
-	if((ex_time*60) < ((clock()/CLOCKS_PER_SEC)-tm))
+	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
 
-	// ##### PROBABILMENTE LA FUNZIONE SETUP SI PUò RENDERE PIù VELOCE!!! ###
-	setup(instance_name, &T, &E, &S, &n, &x, &students_per_exam); // read instance file and setup data structures
+	//setup data structures
+	setup(instance_name, &T, &E, &S, &n, &x); // read instance file and setup data structures
 
-	if((ex_time*60) < ((clock()/CLOCKS_PER_SEC)-tm))
+	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
 
 	initialization(x, n, E, T); // find an initial solution
 
-	if((ex_time*60) < ((clock()/CLOCKS_PER_SEC)-tm))
+	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
 
-	//last argument equal NULL if we want no to initialize the parameters
-	optimizationMethod2(x, T, E, S, n, students_per_exam, argv[1], ex_time - ((clock()/CLOCKS_PER_SEC)-tm)/60, argv[3]);
-	//optimizationMethod3(x, T, E, S, n, students_per_exam, NULL, instance_name);
+	//last argument equal NULL if we want no to initialize the parameters by means of a configuration file
+	optimizationMethod2(x, T, E, S, n, argv[1], (double)ex_time - ((clock()/(double)CLOCKS_PER_SEC)-tm), argv[3]);
 
 	return 0;
 }
 
-void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual_students_P, int **x_P, int **students_per_exam_P)
+void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual_students_P, int **x_P)
 {
 	int i, j, k;
 	int **enrolled_stud;
@@ -102,13 +94,6 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	if (!(strcmp(line, "\n"))) //avoid reading extra the line at the end of every .exm file
 		i--;
 	*E_P = i;
-	*students_per_exam_P = malloc(*E_P * sizeof(int));
-	rewind(fp);
-	while(fgets(line, 99, fp) != NULL)
-	{
-		sscanf(line, "%4d %d", &i, &j);
-		(*students_per_exam_P)[i-1] = j;
-	}
 	fclose(fp);
 
 	*x_P = malloc(*E_P * sizeof(int));
