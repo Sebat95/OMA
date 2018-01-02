@@ -5,7 +5,7 @@
  *      Author: Nicola
  */
 //#define DEBUG_METHOD2
-//#define DEBUG_METHOD2_CHECK
+#define DEBUG_METHOD2_CHECK
 //#define LOG_METHOD2
 //#define DEFINE_PARAM
 //#define CALCOLA_PARAMETRI
@@ -223,6 +223,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 				temperature, no_improvement_times, pen / S, best_pen / S, total_best_pen / S,
 				initial_pen / S);
 #endif
+
 #ifdef LOG_METHOD2
 		sprintf(log,
 				"%d,%f,%f,%f,%d,%d,%d,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
@@ -332,6 +333,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 			//pen = neighborhood2_random(x, n, T, E, tl, exam_penalty, pen);
 			break;
 		}
+
 #ifdef DEBUG_METHOD2_CHECK
 		int j;
 		if(pen != compute_penalty_complete(x, n, E))
@@ -1192,7 +1194,7 @@ static int destroySolution(int *x, int **n, int E, int T, int n_timeslot)
 }
 static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU tl, int *group_positions, int **group_conflicts, ExamPenalty *exam_penalty)
 {
-	double i, dist = 0, dist_old = -1;
+	double dist = 0, dist_old = -1;
 	int x_old[E];
 
 	memcpy(x_old, x, E*sizeof(int));

@@ -5,9 +5,9 @@
  *      Author: Samuele
  */
 
-#ifndef SRC_OMA_LIBRARIES_METHOD3_H_
-#define SRC_OMA_LIBRARIES_METHOD3_H_
+#ifndef SRC_OMA_LIBRARIES_METHOD3_HNO_
+#define SRC_OMA_LIBRARIES_METHOD3_HNO_
 
 void optimizationMethod3(int *x, int T, int E, int S, int **n, int *students_per_exam, int **conflictual_students, char *instance_name);
 
-#endif /* SRC_OMA_LIBRARIES_METHOD3_H_ */
+#endif /* SRC_OMA_LIBRARIES_METHOD3_HNO_ */

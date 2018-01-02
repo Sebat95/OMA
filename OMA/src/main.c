@@ -127,9 +127,9 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	{
 		for(j=i+1; j<*E_P; j++)
 		{
-			for(k=0; k<*S_P-1; k++)
+			for(k=0; k<*S_P; k++)
 			{
-				if(enrolled_stud[k][i] == 1 && enrolled_stud[k][j] == 1)
+				if(enrolled_stud[k][i] >= 1 && enrolled_stud[k][j] >= 1)
 				{
 					(*conflictual_students_P)[i][j]++;
 					(*conflictual_students_P)[j][i]++;
