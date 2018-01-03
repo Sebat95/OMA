@@ -50,6 +50,8 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total 
 	//setup data structures
 	setup(instance_name, &T, &E, &S, &n, &x); // read instance file and setup data structures
 
+	printf("%lf\n", (clock()/CLOCKS_PER_SEC)-tm);
+
 	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
 
@@ -70,6 +72,10 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	int **enrolled_stud;
 	char line[100];
 	FILE *fp;
+	static const long max_len = 99 + 1;
+	char buf[max_len + 1];
+	char *last_newline, *last_line;
+	int index;
 
 	// .slo
 	strcpy(line, instance_name);
@@ -83,36 +89,79 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 
 	// .exm
 	strcpy(line, instance_name);
-	if((fp = fopen(strcat(line, ".exm"), "r")) == NULL)
+	if((fp = fopen(strcat(line, ".exm"), "rb")) == NULL)
 	{
 		fprintf(stdout, "Error: file %s.exm not found.", instance_name);
 		return;
 	}
-	i = 0;
-	while(fgets(line, 99, fp) != NULL)
-		i++;
-	if (!(strcmp(line, "\n"))) //avoid reading extra the line at the end of every .exm file
-		i--;
-	*E_P = i;
+	//read that many bytes from the end of the file
+	fseek(fp, -max_len, SEEK_END);
+	fread(buf, max_len-1, 1, fp);
+
+	//add the null terminator
+	buf[max_len-1] = '\0';
+
+	//find the last newline character
+	last_newline = strrchr(buf, '\n');
+	//extract its index
+	index = (int) abs(buf-last_newline);
+	//if index is too close to the end skip it (account for eventual extra newline at the end)
+	while(abs(max_len-index)<5){
+		buf[index]='\0';
+		last_newline = strrchr(buf, '\n');
+		index = (int) abs(buf-last_newline);
+	}
+
+	//cut the very last line, right after the last newline
+	last_line = last_newline+1;
+
+	//extract the needed data
+	sscanf(last_line, "%d %*d", E_P);
+
 	fclose(fp);
 
 	*x_P = malloc(*E_P * sizeof(int));
 
 	// .stu
 	strcpy(line, instance_name);
-	if((fp = fopen(strcat(line, ".stu"), "r")) == NULL)
+	if((fp = fopen(strcat(line, ".stu"), "rb")) == NULL)
 	{
 		fprintf(stdout, "Error: file %s.stu not found.", instance_name);
 		return;
 	}
-	while(fgets(line, 99, fp) != NULL)
-	{
-		sscanf(line, "s%d %*d", S_P);
+
+	//read that many bytes from the end of the file
+	fseek(fp, -max_len, SEEK_END);
+	fread(buf, max_len-1, 1, fp);
+
+	//add the null terminator
+	buf[max_len-1] = '\0';
+
+	//add the null terminator
+		buf[max_len-1] = '\0';
+
+	//find the last newline character
+	last_newline = strrchr(buf, '\n');
+	//extract its index
+	index = (int) abs(buf-last_newline);
+	//if index is too close to the end skip it (account for eventual extra newline at the end)
+	while(abs(max_len-index)<5){
+		buf[index]='\0';
+		last_newline = strrchr(buf, '\n');
+		index = (int) abs(buf-last_newline);
 	}
+
+	//cut the very last line, right after the last newline
+	last_line = last_newline+1;
+
+	//extract the needed data
+	sscanf(last_line, "s%d %*d", S_P);
+
 	enrolled_stud = malloc(*S_P * sizeof(int*));
 	for(i=0; i<*S_P; i++)
 		enrolled_stud[i] = calloc(*E_P, sizeof(int));
-	rewind(fp);
+
+	fp = freopen(line, "r", fp);
 	while(fgets(line, 99, fp) != NULL)
 	{
 		sscanf(line, "s%d %d\n", &i, &j);
