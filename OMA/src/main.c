@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <omp.h>
 
 #include "OMA_libraries\initialization.h"
 #include "OMA_libraries\method2.h"
@@ -66,7 +67,7 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total 
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual_students_P, int **x_P)
 {
-	int i, j, k;
+	int i, j;
 	int **enrolled_stud;
 	char line[100];
 	FILE *fp;
@@ -170,16 +171,22 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	*conflictual_students_P = malloc(*E_P * sizeof(int*));
 	for(i=0; i<*E_P; i++)
 		(*conflictual_students_P)[i] = calloc(*E_P, sizeof(int));
-	for(k=0; k<*S_P; k++)
+	int th=omp_get_max_threads();
+	omp_set_num_threads(th);
+	#pragma omp parallel num_threads(th) default(none) shared(S_P, conflictual_students_P, E_P, enrolled_stud)
 	{
-		for(i=0; i<*E_P; i++)
+		#pragma omp for collapse(2)
+		for(int k=0; k<*S_P; k++)
 		{
-			for(j=i+1; j<*E_P; j++)
+			for(int i=0; i<*E_P; i++)
 			{
-				if(enrolled_stud[k][i] >= 1 && enrolled_stud[k][j] >= 1)
+				for(int j=i+1; j<*E_P; j++)
 				{
-					(*conflictual_students_P)[i][j]++;
-					(*conflictual_students_P)[j][i]++;
+					if(enrolled_stud[k][i] >= 1 && enrolled_stud[k][j] >= 1)
+					{
+						(*conflictual_students_P)[i][j]++;
+						(*conflictual_students_P)[j][i]++;
+					}
 				}
 			}
 		}
