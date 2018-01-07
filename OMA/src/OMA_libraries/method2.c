@@ -4,12 +4,12 @@
 #define MIN_TABU_LENGTH 3
 #define MAX_TABU_LENGTH 10
 
-#define N_BEST 100
+#define N_BEST 10
 #define RANDOMNESS_BEST 0.1
 #define RANDOMNESS_BEST_MIN 0.05
 #define RANDOMNESS_BEST_MAX 0.2
 
-#define N_BEST_SINGLE 200
+#define N_BEST_SINGLE 10
 #define RANDOMNESS_BEST_SINGLE 0.2
 #define RANDOMNESS_BEST_SINGLE_MIN 0.1
 #define RANDOMNESS_BEST_SINGLE_MAX 0.5
@@ -18,18 +18,15 @@
 #define RANDOMNESS_RANDOMorCHEAP_GROUP_MIN 0.6
 #define RANDOMNESS_RANDOMorCHEAP_GROUP_MAX 0.9
 #define RANDOMNESS_RANDOMorCHEAP_SINGLE 0.5
-#define RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN 0.2
+#define RANDOMNESS_RANDOMorCHEAP_SINGLE_MIN 0.1
 #define RANDOMNESS_RANDOMorCHEAP_SINGLE_MAX 0.7
 
 #define IT_GROUP_BEST_RANDOM 50
 #define IT_SINGLE_BEST_RANDOM 100
 
 #define NO_IMPR_DECREASE 100
+#define DESTROY_THRESHOLD 100
 
-#define DESTROY_THRESHOLD 150
-
-
-#define DYNAMIC_PARAMETERS 1
 #define DYNAMIC_PARAMETERS 1
 #define DYNAMIC_TABULIST 1
 #define TABULIST_INCREASING 1
@@ -41,10 +38,6 @@
 #define RANDOMorCHEAP_SINGLE_INCREASING 0
 #define DYNAMIC_RANDOMorCHEAP_GROUP 1
 #define RANDOMorCHEAP_GROUP_INCREASING 0
-
-#define DESTROY_CURRENTorBEST 1
-#define DESTROY_BESTFIRSTorRANDOM 0
-
 
 #include "method2.h"
 #include "tabu_search.h"
@@ -84,11 +77,10 @@ static void update_parameter(int no_impr_times, double *randomness_single_P, dou
 static void destroySolution_swappingRandom(int *x, int **n, int E, int T, TABU tl);
 static void printBestSolution(int *x, int E, char *instance_name);
 
-void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_name, double ex_time) {
-
+void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_name, double ex_time) 
+{
 	double total_best_pen = INT_MAX;
 	double end = ex_time*CLOCKS_PER_SEC + (double)clock(); // set end time in clock cycle number for timeout
-	long int iteration_counter = 0;
 	double pen, best_pen = INT_MAX;//, total_best_pen = INT_MAX;
 	int i, improvements_number = 0, partial_iteration = 0, tabu_length = TABU_LENGTH, x_best[E];
 	int actual_neighborhood = 0;
@@ -113,14 +105,9 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 		if (no_improvement_times >= DESTROY_THRESHOLD)
 		{
 			no_improvement_times = 0;
+			update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
 			partial_iteration = 0;
 			best_pen = INT_MAX; //reset the best
-
-			if(DESTROY_CURRENTorBEST == 0) // if ==1 use current, if ==0 use best solution
-			{
-				memcpy(x, x_best, E*sizeof(E));
-				pen = best_pen;
-			}
 			destroySolution_swappingRandom(x, n, E, T, tl);
 			pen = compute_penalty_complete(x, n, E);
 
@@ -129,9 +116,6 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 			neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
 			continue; // go to the next iteration of the while
 		}
-
-		if(DYNAMIC_PARAMETERS==1)
-			update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
 
 		switch (actual_neighborhood) {
 		case 0:
@@ -143,7 +127,10 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 				actual_neighborhood = 1;
 				// update no_improvement_times, used in order to detect local minimum
 				if (improvements_number == last_improvements_number)
+				{
 					no_improvement_times++;
+					update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
+				}
 				else
 				{
 					last_improvements_number = improvements_number;
@@ -151,14 +138,15 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 							(no_improvement_times > NO_IMPR_DECREASE) ?
 									no_improvement_times - NO_IMPR_DECREASE :
 									0;
+				update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
 				}
 				continue;
 			}
 			// swap two timeslots
 			if(rand()/(double)RAND_MAX < randomness_randomOrCheap_group)
-				pen = neighborhood1_bestRandom(x, n, T, E, tl, group_positions, group_conflicts, pen, randomness_group);
+				pen = neighborhood1_bestRandom(x, n, T, E, tl, group_positions, group_conflicts, pen, randomness_group); // consider all swaps
 			else
-				pen = neighborhood1_bestRandom_cheap(x, n, T, E, tl, group_positions, group_conflicts, pen, randomness_group);
+				pen = neighborhood1_bestRandom_cheap(x, n, T, E, tl, group_positions, group_conflicts, pen, randomness_group); // consider all swaps for a randomly selected timeslot
 			break;
 		case 1:
 			if (partial_iteration > IT_SINGLE_BEST_RANDOM) // change neighborhood structure
@@ -169,26 +157,29 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 				actual_neighborhood = 0;
 				// update no_improvement_times, used in order to detect local minimum
 				if (improvements_number == last_improvements_number)
+				{
 					no_improvement_times++;
+					update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
+				}
 				else
 				{
 					last_improvements_number = improvements_number;
 					no_improvement_times = (no_improvement_times > NO_IMPR_DECREASE) ?
 							no_improvement_times - NO_IMPR_DECREASE :
 							0;
+					update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
 				}
 				continue;
 			}
-			// BEST RANDOM
-			if (rand() / (double) RAND_MAX < randomness_randomOrCheap_single) // QUESTA è UNA PORCATA, DOBBIAMO TESTARE E VEDERE SE SI PUò FARE IN MODO PIù INTELLIGENTE
-				pen = neighborhood2_bestRandom(x, n, T, E, tl, exam_penalty, pen, randomness_single);
+			// move a single exam
+			if (rand() / (double) RAND_MAX < randomness_randomOrCheap_single)
+				pen = neighborhood2_bestRandom(x, n, T, E, tl, exam_penalty, pen, randomness_single); // consider all moves
 			else
-				pen = neighborhood2_bestRandom_cheap(x, n, T, E, tl, exam_penalty, pen, randomness_single);
+				pen = neighborhood2_bestRandom_cheap(x, n, T, E, tl, exam_penalty, pen, randomness_single); // consider all moves for a randomly selected exam
 			break;
 		}
 
 		// update counter and best solution
-		iteration_counter++;
 		partial_iteration++;
 		if (best_pen > pen)
 		{
@@ -197,11 +188,8 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 			memcpy(x_best, x, E*sizeof(int));
 			if(total_best_pen > best_pen)
 			{
-			#pragma omp critical
-			{
 				total_best_pen = best_pen;
 				printBestSolution(x, E, instance_name);
-			}
 			}
 		}
 	}
@@ -564,6 +552,18 @@ static void update_exam_penalties(ExamPenalty *exam_penalty, int *x, int **n, in
 	}
 }
 
+static int update_penalty(int *x, int **n, int E, int old_pen, int to_swap,	int old_timeslot, int new_timeslot) // O(E)
+{
+	int i;
+	for (i = 0; i < E; i++) {
+		if (n[i][to_swap] && abs(x[i] - old_timeslot) <= 5) // old penalty
+			old_pen -= pow(2, 5 - abs(x[i] - old_timeslot)) * n[i][to_swap];
+		if (n[i][to_swap] && abs(x[i] - new_timeslot) <= 5) // new penalty
+			old_pen += pow(2, 5 - abs(x[i] - new_timeslot)) * n[i][to_swap];
+	}
+	return old_pen;
+}
+
 static void neighborhood2_setup(int *x, int **n, int T, int E, ExamPenalty *exam_penalty) // O(E^2)
 {
 	int i, j;
@@ -578,7 +578,6 @@ static void neighborhood2_setup(int *x, int **n, int T, int E, ExamPenalty *exam
 }
 
 // UTILITIES
-// ##################### ANCORA DA PULIRE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 static int compute_penalty_complete(int *x, int **n, int E) // O(E^2)
 {
 	int i, j, pen = 0;
@@ -597,29 +596,14 @@ static int compute_penalty_complete(int *x, int **n, int E) // O(E^2)
 	return pen; // we have to count 2 times each combination
 }
 
-// ##################### ANCORA DA PULIRE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-static int update_penalty(int *x, int **n, int E, int old_pen, int to_swap,	int old_timeslot, int new_timeslot) // O(E)
-{
-	int i;
-	for (i = 0; i < E; i++) {
-		if (n[i][to_swap] && abs(x[i] - old_timeslot) <= 5) // old penalty
-			old_pen -= pow(2, 5 - abs(x[i] - old_timeslot)) * n[i][to_swap];
-		if (n[i][to_swap] && abs(x[i] - new_timeslot) <= 5) // new penalty
-			old_pen += pow(2, 5 - abs(x[i] - new_timeslot)) * n[i][to_swap];
-	}
-	return old_pen;
-}
-
 static void swap(int* a, int* b) {
 	*a += *b;
 	*b = *a - *b;
 	*a -= *b;
 }
 
-// ##################### ANCORA DA PULIRE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 static void update_parameter(int no_impr_times, double *randomness_single_P, double *randomness_group_P, int *tabu_length_P, TABU tl, double *randomness_randomOrCheap_group_P, double *randomness_randomOrCheap_single_P)
 {
-	// NOTA: PER ORA TREND NON è USATO
 	double var = (double) no_impr_times / DESTROY_THRESHOLD; // between 0 and 1
 
 	if(DYNAMIC_TABULIST == 1)
@@ -659,7 +643,6 @@ static void update_parameter(int no_impr_times, double *randomness_single_P, dou
 	}
 }
 
-// ##################### ANCORA DA PULIRE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 static void printBestSolution(int *x, int E, char *instance_name)
 {
 	int i;

@@ -9,7 +9,7 @@
 typedef struct fifo_node_struct
 {
 	int x, y; // elements that have been swapped
-	int type; // 0 = single move, 1 = group move
+	int type; // 0 = single move, 1 = group move, 2 = single move for destruction, 3 = group move for destruction
 	struct fifo_node_struct* next;
 }FIFO_node;
 
@@ -23,9 +23,6 @@ typedef struct tabulist_struct
 {
 	FIFO *fifo_queue; // FIFO of forbidden actions (implementation will depend on who use this library)
 	int length; //tabu list length
-	//int iteration; // number of times tabu list has been accessed since last time TL length has been increased (potrei demandare la variazione di lunghezza al chiamante, dando un'apposita funzione per allungare/ridurre la tabu list)
-	//int iteration_to_increase; // each iteration_to_increase iterations, TL length is increased
-	//unsigned char dynamic; // boolean specifying if tabu list length is dynamically changing
 	int min_length;
 	int max_length;
 }TabuList;
@@ -42,31 +39,23 @@ static void resetNode(FIFO_node *pointer);
 
 // DEFINITIONS ************************
 
-TabuList* new_TabuList(int length, int min_length, int max_length)//, int iteration, int iteration_to_increase, unsigned char dynamic)
+TabuList* new_TabuList(int length, int min_length, int max_length)
 {
 	TabuList* tl = malloc(sizeof(TabuList));
 	tl->length = length;
 	tl->min_length = min_length;
 	tl->max_length = max_length;
-	//tl->iteration = iteration;
-	//tl->iteration_to_increase = iteration_to_increase;
-	//tl->dynamic = dynamic;
 	tl->fifo_queue = new_FIFO(length);
 	return tl;
 }
 
 int check_TabuList(TabuList* tl, int x, int y, int type)
 {
-//	printf("Thread %d check in\n", omp_get_thread_num());
-//	int ret = match_FIFO(tl->fifo_queue, x, y, type);
-//	printf("Thread %d check out\n", omp_get_thread_num());
-//	return ret;
 	return match_FIFO(tl->fifo_queue, x, y, type);
 }
 
 void insert_TabuList(TabuList* tl, int x, int y, int type)
 {
-	//insert_FIFO(tl->fifo_queue, y, x); IN CERTI CASI BISOGNA METTERE IN ORDINE INVERSO (attualmente non lo uso cosi) (in questi casi, potrei invertire l'ordine direttamente quando chiamo la insert)
 	insert_FIFO(tl->fifo_queue, x, y, type);
 }
 

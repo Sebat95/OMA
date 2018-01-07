@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = -t, argv[3
 	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
 
-	initialization(x, n, E, T); // find an initial solution
+	initialization(x, n, E, T); // find an initial feasible solution
 
 	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
@@ -88,18 +88,15 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	last_newline = strrchr(buf, '\n');
 	//extract its index
 	index = (int) abs(buf-last_newline);
-	//if index is too close to the end skip it (account for eventual extra newline at the end)
-	while(abs(max_len-index)<5){
+	//cut the very last line, right after the last newline
+	last_line = last_newline+1;
+	//while the last line is unreadable
+	while(sscanf(last_line, "%d %*d", E_P)==EOF){
 		buf[index]='\0';
 		last_newline = strrchr(buf, '\n');
 		index = (int) abs(buf-last_newline);
+		last_line = last_newline+1;
 	}
-
-	//cut the very last line, right after the last newline
-	last_line = last_newline+1;
-
-	//extract the needed data
-	sscanf(last_line, "%d %*d", E_P);
 
 	fclose(fp);
 
@@ -112,7 +109,6 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 		fprintf(stdout, "Error: file %s.stu not found.", instance_name);
 		return;
 	}
-
 	//read that many bytes from the end of the file
 	fseek(fp, -max_len, SEEK_END);
 	fread(buf, max_len-1, 1, fp);
@@ -124,18 +120,17 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	last_newline = strrchr(buf, '\n');
 	//extract its index
 	index = (int) abs(buf-last_newline);
-	//if index is too close to the end skip it (account for eventual extra newline at the end)
-	while(abs(max_len-index)<5){
+	//cut the very last line, right after the last newline
+	last_line = last_newline+1;
+	//while the last line is unreadable
+	while(sscanf(last_line, "s%d %*d", S_P)==EOF){
 		buf[index]='\0';
 		last_newline = strrchr(buf, '\n');
 		index = (int) abs(buf-last_newline);
+		last_line = last_newline+1;
 	}
 
-	//cut the very last line, right after the last newline
-	last_line = last_newline+1;
-
-	//extract the needed data
-	sscanf(last_line, "s%d %*d", S_P);
+	fclose(fp);
 
 	enrolled_stud = malloc(*S_P * sizeof(int*));
 	for(i=0; i<*S_P; i++)
