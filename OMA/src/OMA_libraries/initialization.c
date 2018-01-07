@@ -1,11 +1,4 @@
-
-/*
- * initialization.c
- *
- *  Created on: 03 dic 2017
- *      Author: Nicola
- */
-//#define DEBUG_INITIALIZATION 1
+//#define DEBUG_INITIALIZATION
 
 #define RANDOMNESS_INIT 0.2
 #define TABU_LENGTH_INIT 5
@@ -16,6 +9,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <omp.h>
 
 // DATA STRUCTURES *************************
 
@@ -28,14 +22,15 @@ typedef struct
 {
 	int exam;
 	int value;
+	//int times;
 }Value;
 
 // PROTOTYPES (almost all static functions) ***************
 
-static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T); // GRASP + TABU SEARCH
+static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T, int *flag); // GRASP + TABU SEARCH
 
 static int insert_exam_in_better_timeslot(int *x, int **n, int E, int T, TABU tl, Conflict *conflict_for_timeslot, int to_swap);
-static int count_number_conflicts(int *x, int **n, int E);
+//static int count_number_conflicts(int *x, int **n, int E); //unused
 	// compare functions for qsort
 static int compare_conflict_increasing(const void* a, const void* b);
 static int compare_int_decreasing(const void* a, const void* b);
@@ -55,16 +50,19 @@ void initialization(int *x, int **n, int E, int T)
 		rank[i].value = 0;
 	}
 	for(i=0; i<E; i++)
-		for(j=0; j<E; j++)
+		for(j=i+1; j<E; j++)
 			if(n[i][j]) // exam i and j in conflict
 			{
-				rank[i].value++;
-				rank[j].value++;
+				rank[i].value+=n[i][j];
+				rank[j].value+=n[i][j];
+				//rank[i].times++;
+				//rank[j].times++;
 			}
+//	for(i=0; i<E; i++)
+//		rank[i].value*=rank[i].times;
 	qsort(rank, E, sizeof(Value), compare_Value_decreasing); // sort exam by decreasing number of conflicts with other exams
 
 	// GREEDY PART ************************
-
 	x[rank[0].exam] = 0; // put first exam in timeslot 0 (or in any other timeslot)
 	for(i=1; i<E; i++)
 		x[rank[i].exam] = -1; // set other exams timeslots to an invalid value
@@ -106,25 +104,38 @@ void initialization(int *x, int **n, int E, int T)
 		fprintf(stdout, "Greedy algorithm for the initialization didn't found a feasible solution.\nA metaheuristic is required.\n");
 #endif
 
-	#pragma omp parallel
-			{
-			while(!found)
+	#pragma omp parallel shared(found, x)
 			{
 				int x_thread[E];
-#ifdef DEBUG_INITIALIZATION
-				printf("thread  %d ha iniziato la metaheuristica\n", omp_get_thread_num());
-				fflush(stdout);
-#endif
-				memcpy(x_thread, x, E*sizeof(int));
-				initializationMetaheuristic_tabuSearch(x_thread, n, E, T);
-#ifdef DEBUG_INITIALIZATION
-				printf("thread  %d ha finito la metaheuristica\n", omp_get_thread_num());
-				fflush(stdout);
-#endif
-				memcpy(x, x_thread, E*sizeof(int));
-				found = 1;
+				while(!found)
+				{
+
+	#ifdef DEBUG_INITIALIZATION
+					x_thread[0] = omp_get_thread_num();
+					printf("thread  %d ha iniziato la metaheuristica.\n", omp_get_thread_num(), &x_thread, x_thread[0]);
+					fflush(stdout);
+	#endif
+
+					memcpy(x_thread, x, E*sizeof(int));
+
+					srand(omp_get_thread_num());
+					initializationMetaheuristic_tabuSearch(x_thread, n, E, T, &found);
+
+	#ifdef DEBUG_INITIALIZATION
+					printf("thread  %d ha finito la metaheuristica.\n", omp_get_thread_num(), &x_thread, x_thread[0]);
+					fflush(stdout);
+	#endif
+
+					#pragma omp critical
+					{
+						if(!found) // if no thread has found a feasible solution still
+						{
+							memcpy(x, x_thread, E*sizeof(int));
+							found = 1; // stop all other threads
+						}
+					}
+				}
 			}
-		}
 	}
 
 #ifdef DEBUG_INITIALIZATION
@@ -153,7 +164,8 @@ void initialization(int *x, int **n, int E, int T)
 
 	return;
 }
-static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T)
+
+static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T, int *flag)
 {
 	int i, j, to_swap, candidate_timeslot = 0, mark[E];
 	TABU tl = new_TabuList(TABU_LENGTH_INIT, TABU_LENGTH_INIT, TABU_LENGTH_INIT);
@@ -161,12 +173,14 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 
 	srand(time(NULL)); // each execution may be different
 
-	while(1)
+	while(!(*flag))
 	{
+
 #ifdef DEBUG_INITIALIZATION
 		//for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
 		fprintf(stdout, "\nNumber of conflicts: %d. Thread %d\n", count_number_conflicts(x, n, E), omp_get_thread_num());
 #endif
+
 		// look for an exam in conflict with another exam in the same timeslot
 		to_swap = rand() % E; // start the scan from a random exam
 		for(j=0; j<E; j++) // scan exams in a circular way
@@ -234,6 +248,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 	free(conflict_for_timeslot);
 	delete_TabuList(tl);
 }
+
 static int insert_exam_in_better_timeslot(int *x, int **n, int E, int T, TABU tl, Conflict *conflict_for_timeslot, int to_swap)
 {
 	int i, j, found = 0, candidate_timeslot = -1;
@@ -276,10 +291,12 @@ int compare_conflict_increasing(const void* a, const void* b)
 	Conflict* B = (Conflict*)b;
 	return A->conflict - B->conflict;
 }
+
 int compare_int_decreasing(const void* a, const void* b)
 {
 	return *(int*) b - *(int*) a;
 }
+
 int compare_Value_decreasing(const void* a, const void* b)
 {
 	Value A = *(Value*)a, B = *(Value*) b;
@@ -290,6 +307,8 @@ int compare_Value_decreasing(const void* a, const void* b)
 		return -1;
 	return 0;
 }
+
+/* unused
 static int count_number_conflicts(int *x, int **n, int E)
 {
 	int i, j, conflicts = 0;
@@ -299,3 +318,4 @@ static int count_number_conflicts(int *x, int **n, int E)
 				conflicts++;
 	return conflicts;
 }
+*/

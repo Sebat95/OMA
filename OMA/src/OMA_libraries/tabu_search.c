@@ -1,9 +1,3 @@
-/*
- * tabu_search.c
- *
- *  Created on: 05 dic 2017
- *      Author: Nicola
- */
 #define DEBUG_TABU_SEARCH
 
 #include "tabu_search.h"
@@ -60,6 +54,7 @@ TabuList* new_TabuList(int length, int min_length, int max_length)//, int iterat
 	tl->fifo_queue = new_FIFO(length);
 	return tl;
 }
+
 int check_TabuList(TabuList* tl, int x, int y, int type)
 {
 //	printf("Thread %d check in\n", omp_get_thread_num());
@@ -68,16 +63,19 @@ int check_TabuList(TabuList* tl, int x, int y, int type)
 //	return ret;
 	return match_FIFO(tl->fifo_queue, x, y, type);
 }
+
 void insert_TabuList(TabuList* tl, int x, int y, int type)
 {
 	//insert_FIFO(tl->fifo_queue, y, x); IN CERTI CASI BISOGNA METTERE IN ORDINE INVERSO (attualmente non lo uso cosi) (in questi casi, potrei invertire l'ordine direttamente quando chiamo la insert)
 	insert_FIFO(tl->fifo_queue, x, y, type);
 }
+
 void delete_TabuList(TabuList* tl)
 {
-	//free_FIFO(tl->fifo_queue);
+	free_FIFO(tl->fifo_queue);
 	free(tl);
 }
+
 int increase_TabuList(TabuList* tl)
 {
 	if(tl->length < tl->max_length)
@@ -87,6 +85,7 @@ int increase_TabuList(TabuList* tl)
 	}
 	return tl->length;
 }
+
 int decrease_TabuList(TabuList* tl)
 {
 	if(tl->length > tl->min_length)
@@ -96,6 +95,7 @@ int decrease_TabuList(TabuList* tl)
 	}
 	return tl->length;
 }
+
 int update_TabuList(TabuList* tl, int length)
 {
 	while(length > tl->length && tl->length < tl->max_length)
@@ -108,7 +108,7 @@ int update_TabuList(TabuList* tl, int length)
 	}
 	return tl->length;
 }
-// FIFO ***** (POTREI FARE UNA LIBRERIA A PARTE MA VEDIAMO SE EFFETTIVAMENTE LA USEREMMO IN ALTRI MODI)
+
 static FIFO* new_FIFO(int length)
 {
 	int i;
@@ -125,6 +125,7 @@ static FIFO* new_FIFO(int length)
 	}
 	return fifo;
 }
+
 static int match_FIFO(FIFO* fifo, int x, int y, int type)
 {
 	FIFO_node *pointer = fifo->head;
@@ -136,6 +137,7 @@ static int match_FIFO(FIFO* fifo, int x, int y, int type)
 	}
 	return 0; //match not found
 }
+
 static void insert_FIFO(FIFO* fifo, int x, int y, int type) // remove the head, insert on tail (it could be the contrary also)
 {
 	FIFO_node *pointer = fifo->head;
@@ -146,6 +148,7 @@ static void insert_FIFO(FIFO* fifo, int x, int y, int type) // remove the head, 
 	fifo->head = fifo->head->next; // the new head is the second node
 	pointer->next->next = NULL; //the ex-head is the tail now, so I put his next to NULL
 }
+
 static void free_FIFO(FIFO* fifo)
 {
 	FIFO_node *pointer = fifo->head;
@@ -156,10 +159,12 @@ static void free_FIFO(FIFO* fifo)
 	}
 	free(fifo);
 }
+
 static void resetNode(FIFO_node *pointer)
 {
 	pointer->x = -1; pointer->y = -1; pointer->type = -1;//null values at the beginning (I could manage not completely full FIFO, but maybe is not more efficient)
 }
+
 static void increase_FIFO(FIFO* fifo)
 {
 	FIFO_node *newNode = malloc(sizeof(FIFO_node));
@@ -167,6 +172,7 @@ static void increase_FIFO(FIFO* fifo)
 	newNode->next = fifo->head; // the new node is the head now, thus will be popped during the next insert
 	fifo->head = newNode;
 }
+
 static void decrease_FIFO(FIFO* fifo)
 {
 	FIFO_node *to_remove = fifo->head; // the oldest move (the head) will be removed

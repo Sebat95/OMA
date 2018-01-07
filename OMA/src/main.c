@@ -1,31 +1,17 @@
-/*
- * main.c
- *
- *  Created on: 02 dic 2017
- *      Author: Nicola
- */
 //#define DEBUG_MAIN
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <omp.h>
 
 #include "OMA_libraries\initialization.h"
 #include "OMA_libraries\method2.h"
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***n_P, int **x_P);
 
-int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total time to execute in seconds,
-								 // argv[3]= "XXXXX.txt" parameters file
+int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = -t, argv[3] = "X" total time to execute in seconds
 {
-	// CONSTANTS
-	const char* INSTANCE_PATH = "instances/";
-	char instance_name[50];
-	strcpy(instance_name, INSTANCE_PATH);
-	strcat(instance_name, argv[1]);
-
 	// DATA STRUCTURE
 	int T, E, S; // number of timeslots, exams and students
 	int **n; // n[i,j] is the number of students enrolled in exams i and j (conflictual)
@@ -42,14 +28,13 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total 
 		fprintf(stderr, "Too much arguments on the command line!\n");
 		return -1;
 	}
-	ex_time=atoi(argv[2]);
-	//argv[3] init file
+	ex_time=atoi(argv[3]);
 
 	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
 
 	//setup data structures
-	setup(instance_name, &T, &E, &S, &n, &x); // read instance file and setup data structures
+	setup(argv[1], &T, &E, &S, &n, &x); // read instance file and setup data structures
 
 	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
@@ -59,15 +44,14 @@ int main(int argc, char* argv[]) // argv[1] = "instanceXX", argv[2] = "X" total 
 	if((ex_time) < ((clock()/CLOCKS_PER_SEC)-tm))
 		return 0;
 
-	//last argument equal NULL if we want no to initialize the parameters by means of a configuration file
-	optimizationMethod2(x, T, E, S, n, argv[1], (double)ex_time - ((clock()/(double)CLOCKS_PER_SEC)-tm), argv[3]);
+	optimizationMethod2(x, T, E, S, n, argv[1], (double)ex_time - ((clock()/(double)CLOCKS_PER_SEC)-tm));
 
 	return 0;
 }
 
 void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual_students_P, int **x_P)
 {
-	int i, j;
+	int i, j, k;
 	int **enrolled_stud;
 	char line[100];
 	FILE *fp;
@@ -136,9 +120,6 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	//add the null terminator
 	buf[max_len-1] = '\0';
 
-	//add the null terminator
-		buf[max_len-1] = '\0';
-
 	//find the last newline character
 	last_newline = strrchr(buf, '\n');
 	//extract its index
@@ -169,24 +150,20 @@ void setup(char *instance_name, int *T_P, int *E_P, int *S_P, int ***conflictual
 	fclose(fp);
 
 	*conflictual_students_P = malloc(*E_P * sizeof(int*));
-	for(i=0; i<*E_P; i++)
+	for(i=0; i<*E_P; i++){
 		(*conflictual_students_P)[i] = calloc(*E_P, sizeof(int));
-	int th=omp_get_max_threads();
-	omp_set_num_threads(th);
-	#pragma omp parallel num_threads(th) default(none) shared(S_P, conflictual_students_P, E_P, enrolled_stud)
+	}
+
+	for(k=0; k<*S_P; k++)
 	{
-		#pragma omp for collapse(2)
-		for(int k=0; k<*S_P; k++)
+		for(i=0; i<*E_P; i++)
 		{
-			for(int i=0; i<*E_P; i++)
+			for(j=i+1; j<*E_P; j++)
 			{
-				for(int j=i+1; j<*E_P; j++)
+				if(enrolled_stud[k][i] >= 1 && enrolled_stud[k][j] >= 1)
 				{
-					if(enrolled_stud[k][i] >= 1 && enrolled_stud[k][j] >= 1)
-					{
-						(*conflictual_students_P)[i][j]++;
-						(*conflictual_students_P)[j][i]++;
-					}
+					(*conflictual_students_P)[i][j]++;
+					(*conflictual_students_P)[j][i]++;
 				}
 			}
 		}

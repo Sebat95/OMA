@@ -1,14 +1,7 @@
-/*
- * tabu_search.h
- *
- *  Created on: 05 dic 2017
- *      Author: Nicola
- */
-
 #ifndef SRC_OMA_LIBRARIES_TABU_SEARCH_H_
 #define SRC_OMA_LIBRARIES_TABU_SEARCH_H_
 
-// NOTA: NON è GESTITO IL CASO IN CUI LENGTH = 0 (potrei farlo ma dovrei mettere controlli in più perdendo efficienza, vediamo poi se serve)
+// LENGTH = 0 not controlled, too heavy, never passed directly in the first place
 
 typedef struct tabulist_struct* TABU;
 
