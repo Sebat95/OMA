@@ -1,4 +1,4 @@
-#define PRINT_FINAL_BEST
+//#define PRINT_FINAL_BEST
 
 #define TABU_LENGTH 10
 #define MIN_TABU_LENGTH 3
@@ -109,7 +109,6 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 			best_pen = INT_MAX; //reset the best
 			destroySolution_swappingRandom(x, n, E, T, tl);
 			pen = compute_penalty_complete(x, n, E);
-
 			//setup again data structure
 			actual_neighborhood = 0;
 			neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
@@ -147,6 +146,8 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 				pen = neighborhood1_bestRandom(x, n, T, E, tl, group_positions, group_conflicts, pen, randomness_group); // consider all swaps
 			else
 				pen = neighborhood1_bestRandom_cheap(x, n, T, E, tl, group_positions, group_conflicts, pen, randomness_group); // consider all swaps for a randomly selected timeslot
+			if(pen==INT_MAX)
+				no_improvement_times = DESTROY_THRESHOLD;
 			break;
 		case 1:
 			if (partial_iteration > IT_SINGLE_BEST_RANDOM) // change neighborhood structure
@@ -171,11 +172,14 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 				}
 				continue;
 			}
+
 			// move a single exam
 			if (rand() / (double) RAND_MAX < randomness_randomOrCheap_single)
-				pen = neighborhood2_bestRandom(x, n, T, E, tl, exam_penalty, pen, randomness_single); // consider all moves
+				pen = neighborhood2_bestRandom(x, n, T, E, tl, exam_penalty, pen, randomness_single);  // consider all moves
 			else
 				pen = neighborhood2_bestRandom_cheap(x, n, T, E, tl, exam_penalty, pen, randomness_single); // consider all moves for a randomly selected exam
+			if(pen==INT_MAX)
+				no_improvement_times = DESTROY_THRESHOLD;
 			break;
 		}
 
@@ -252,11 +256,13 @@ static int neighborhood1_bestRandom(int *x, int **n, int T, int E, TABU tl, int 
 		}
 	}
 	// select one of the best moves
-	for (i = 0;; i = (i + 1) % N_BEST)
+	if(N_best[0][1]==-1)
+			return INT_MAX;
+	for (i = 0; ; i = (i + 1) % N_BEST)
 	{
 		if (N_best[i][1] == -1) // last element of N_best are empty, go back to the beginning
 		{
-			i = 0;
+			i = -1;
 			continue;
 		}
 		if (rand() / (double) RAND_MAX < randomness_group) // randomness_group is used to select one of the best allowed moves
@@ -315,11 +321,13 @@ static int neighborhood1_bestRandom_cheap(int *x, int **n, int T, int E, TABU tl
 			}
 		}
 	// select one of the best moves
+	if(N_best[0][1]==-1) //no moves allowed -> exit
+		return INT_MAX;
 	for (i = 0; ; i = (i + 1) % N_BEST)
 	{
 		if (N_best[i][1] == -1)
 		{
-			i = 0;
+			i = -1; //start the next cycle again with i=0
 			continue;
 		}
 		if (rand() / (double) RAND_MAX < randomness_group) // randomness_group is used to select one of the best allowed moves
@@ -449,6 +457,8 @@ static int neighborhood2_bestRandom(int *x, int **n, int T, int E, TABU tl, Exam
 		}
 	}
 
+	if(N_best[0][1]==-1)
+			return INT_MAX;
 	while (1)
 	{
 		for (i = 0; i < N_BEST_SINGLE && N_best[i][0] != -1; i++)
@@ -514,6 +524,8 @@ static int neighborhood2_bestRandom_cheap(int *x, int **n, int T, int E, TABU tl
 			chosen = 0; // break the cycle
 	}
 
+	if(N_best[0][1]==-1)
+			return INT_MAX;
 	while (1)
 	{
 		for (i = 0; i < N_BEST_SINGLE && N_best[i][0] != -1; i++)

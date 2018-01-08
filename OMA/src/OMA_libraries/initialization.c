@@ -32,7 +32,6 @@ static int insert_exam_in_better_timeslot(int *x, int **n, int E, int T, TABU tl
 //static int count_number_conflicts(int *x, int **n, int E); //unused
 	// compare functions for qsort
 static int compare_conflict_increasing(const void* a, const void* b);
-static int compare_int_decreasing(const void* a, const void* b);
 static int compare_Value_decreasing(const void* a, const void* b);
 
 // DEFINITIONS ***************************
@@ -96,7 +95,7 @@ void initialization(int *x, int **n, int E, int T)
 	if(!greedy_successfull) // greedy_successfull = 1 if greedy algorithm has found a feasible solution (no metaheuristic required)
 	{
 #ifdef DEBUG_INITIALIZATION
-		fprintf(stdout, "Soluzione iniziale greedy con %d conflitti.\n", count_number_conflicts(x, n, E));
+		//fprintf(stdout, "Soluzione iniziale greedy con %d conflitti.\n", count_number_conflicts(x, n, E));
 		fprintf(stdout, "Greedy algorithm for the initialization didn't found a feasible solution.\nA metaheuristic is required.\n");
 #endif
 
@@ -107,8 +106,7 @@ void initialization(int *x, int **n, int E, int T)
 				{
 
 	#ifdef DEBUG_INITIALIZATION
-					x_thread[0] = omp_get_thread_num();
-					printf("thread  %d started metaheuristic phase.\n", omp_get_thread_num(), &x_thread, x_thread[0]);
+					printf("thread  %d started metaheuristic phase.\n", omp_get_thread_num());
 					fflush(stdout);
 	#endif
 
@@ -118,7 +116,7 @@ void initialization(int *x, int **n, int E, int T)
 					initializationMetaheuristic_tabuSearch(x_thread, n, E, T, &found);
 
 	#ifdef DEBUG_INITIALIZATION
-					printf("thread  %d ended metaheuristic phase.\n", omp_get_thread_num(), &x_thread, x_thread[0]);
+					printf("thread  %d ended metaheuristic phase.\n", omp_get_thread_num());
 					fflush(stdout);
 	#endif
 
@@ -152,10 +150,10 @@ void initialization(int *x, int **n, int E, int T)
 			}
 	}
 	fprintf(stdout, "REQUIRED TIME: about %.3f seconds.\n", (t2 - t1) * (1.0 / CLOCKS_PER_SEC));
-
-	fprintf(stdout, "\nInitial solution:\n");
-	for(i=0; i<E; i++)
-		fprintf(stdout, "x[%d] = %d\n", i, x[i]);
+//	fprintf(stdout, "\nInitial solution:\n");
+//	for(i=0; i<E; i++)
+//		fprintf(stdout, "x[%d] = %d\n", i, x[i]);
+	fflush(stdout);
 #endif
 
 	return;
@@ -163,7 +161,8 @@ void initialization(int *x, int **n, int E, int T)
 
 static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T, int *flag)
 {
-	int i, j, to_swap, candidate_timeslot = 0, mark[E];
+	int i, j, to_swap, candidate_timeslot = 0;
+	Value mark[E];
 	TABU tl = new_TabuList(TABU_LENGTH_INIT, TABU_LENGTH_INIT, TABU_LENGTH_INIT);
 	Conflict *conflict_for_timeslot = malloc(T * sizeof(Conflict));
 
@@ -174,7 +173,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 
 #ifdef DEBUG_INITIALIZATION
 		for(i=0;i<E;i++) fprintf(stdout, "%2d ", x[i]);
-		fprintf(stdout, "\nNumber of conflicts: %d. Thread %d\n", count_number_conflicts(x, n, E), omp_get_thread_num());
+		//fprintf(stdout, "\nNumber of conflicts: %d. Thread %d\n", count_number_conflicts(x, n, E), omp_get_thread_num());
 #endif
 
 		// look for an exam in conflict with another exam in the same timeslot
@@ -198,27 +197,31 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 
 		// Possibility 1: select exam in candidate_timeslot which has more conflicts in that timeslot
 		for(i=0;i<E;i++) 
-			mark[i] = 0; // reset conflict counter
+		{
+			mark[i].value = 0; // reset conflict counter
+			mark[i].exam = i;
+		}
 		for(i=0;i<E;i++)
 			if(x[i] == candidate_timeslot) // considering exam i in candidate_timeslot
-				for(j=0;j<E;j++)
+				for(j=i+1;j<E;j++)
 					if(x[j] == candidate_timeslot && n[i][j] && j != to_swap && j != i) // exam j is in the same timeslot and is in conflict
 					{
-						mark[i]++; // increase conflicts counter for exam i and j
-						mark[j]++;
+						mark[i].value++; // increase conflicts counter for exam i and j
+						mark[j].value++;
 					}
-		qsort(mark, E, sizeof(int), compare_int_decreasing); // sort exam by decreasing number of conflicts with other exams in candidate_timeslot
+		qsort(mark, E, sizeof(int), compare_Value_decreasing); // sort exam by decreasing number of conflicts with other exams in candidate_timeslot
+
 		do
 		{
-			for(i=0;i<E && mark[i] > 0;i++)
+			for(i=0;i<E && mark[i].value > 0;i++)
 			{
 				if(rand()/(double)RAND_MAX < RANDOMNESS_INIT)
 					continue;
 				break;
 			}
-		}while(i == E || mark[i] != 0);
+		}while(i == E || mark[i].value != 0);
 
-		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, i); // insert the selected exam in the best timeslot (it may be also the same candidate_timeslot)
+		insert_exam_in_better_timeslot(x, n, E, T, tl, conflict_for_timeslot, mark[i].exam); // insert the selected exam in the best timeslot (it may be also the same candidate_timeslot)
 
 		/*// Possibility 2: select a random exam in candidate_timeslot in conflict with another exam
 		to_swap = rand() % E;
@@ -287,11 +290,6 @@ int compare_conflict_increasing(const void* a, const void* b)
 	Conflict* A = (Conflict*)a;
 	Conflict* B = (Conflict*)b;
 	return A->conflict - B->conflict;
-}
-
-int compare_int_decreasing(const void* a, const void* b)
-{
-	return *(int*) b - *(int*) a;
 }
 
 int compare_Value_decreasing(const void* a, const void* b)
