@@ -1,4 +1,4 @@
-#define PRINT_FINAL_BEST
+//#define PRINT_FINAL_BEST
 
 #define TABU_LENGTH 10
 #define MIN_TABU_LENGTH 3

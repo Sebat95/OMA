@@ -201,7 +201,7 @@ static void initializationMetaheuristic_tabuSearch(int *x, int **n, int E, int T
 			mark[i] = 0; // reset conflict counter
 		for(i=0;i<E;i++)
 			if(x[i] == candidate_timeslot) // considering exam i in candidate_timeslot
-				for(j=0;j<E;j++)
+				for(j=i+1;j<E;j++)
 					if(x[j] == candidate_timeslot && n[i][j] && j != to_swap && j != i) // exam j is in the same timeslot and is in conflict
 					{
 						mark[i]++; // increase conflicts counter for exam i and j
