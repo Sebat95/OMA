@@ -105,7 +105,6 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 		if (no_improvement_times >= DESTROY_THRESHOLD)
 		{
 			no_improvement_times = 0;
-			update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
 			partial_iteration = 0;
 			best_pen = INT_MAX; //reset the best
 			destroySolution_swappingRandom(x, n, E, T, tl);
@@ -114,6 +113,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 			//setup again data structure
 			actual_neighborhood = 0;
 			neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
+			update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
 			continue; // go to the next iteration of the while
 		}
 
@@ -138,7 +138,7 @@ void optimizationMethod2(int *x, int T, int E, int S, int **n, char *instance_na
 							(no_improvement_times > NO_IMPR_DECREASE) ?
 									no_improvement_times - NO_IMPR_DECREASE :
 									0;
-				update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
+					update_parameter(no_improvement_times,  &randomness_single, &randomness_group, &tabu_length, tl, &randomness_randomOrCheap_group, &randomness_randomOrCheap_single);
 				}
 				continue;
 			}
@@ -661,42 +661,325 @@ static void printBestSolution(int *x, int E, char *instance_name)
 
 static void destroySolution_swappingRandom(int *x, int **n, int E, int T, TABU tl)
 {
-	int iteration = 0, i, j, counter, N_ITERATION = 10, N_SINGLE = 200, N_GROUP = 50;
+	int i, j, counter, N_SINGLE = 2000, N_GROUP = 500;
 	int to_swap;
 
-	while(iteration < N_ITERATION)
+	// swap single exams
+	for(counter = 0; counter < N_SINGLE; counter++)
 	{
-		// swap single exams
-		for(counter = 0; counter < N_SINGLE; counter++)
+		to_swap = rand() % E;
+		for(i=0; i<T; i++)
 		{
-			to_swap = rand() % E;
-			for(i=0; i<T; i++)
-			{
-				if(check_TabuList(tl, to_swap, i, 2)) // not allowed move
-					continue;
-				for(j=0; j<E; j++)
-					if(x[j] == i && n[to_swap][j]) // unfeasible move
-						break;
-				if(j!=E)
-					continue;
-				insert_TabuList(tl, to_swap, x[to_swap], 2);
-				x[to_swap] = i;
-			}
-		}
-		// swap timeslot
-		for(counter = 0; counter < N_GROUP; counter++)
-		{
-			to_swap = rand() % T;
-			for(i=rand()%T, j=0; (i==to_swap || check_TabuList(tl, (to_swap>i)?to_swap:i, (to_swap>i)?i:to_swap, 3)) && j<T; i=(i+1)%T, j++);
-			if(j==T) // no possible swap for timeslot to_swap
+			if(check_TabuList(tl, to_swap, i, 2)) // not allowed move
 				continue;
 			for(j=0; j<E; j++)
-				if(x[j]==to_swap)
-					x[j] = i;
-				else if(x[j]==i)
-					x[j] = to_swap;
-			insert_TabuList(tl, (to_swap>i)?to_swap:i, (to_swap>i)?i:to_swap, 3);
+				if(x[j] == i && n[to_swap][j]) // unfeasible move
+					break;
+			if(j!=E)
+				continue;
+			insert_TabuList(tl, to_swap, x[to_swap], 2);
+			x[to_swap] = i;
 		}
-		iteration++;
 	}
+	// swap timeslot
+	for(counter = 0; counter < N_GROUP; counter++)
+	{
+		to_swap = rand() % T;
+		for(i=rand()%T, j=0; (i==to_swap || check_TabuList(tl, (to_swap>i)?to_swap:i, (to_swap>i)?i:to_swap, 3)) && j<T; i=(i+1)%T, j++);
+		if(j==T) // no possible swap for timeslot to_swap
+			continue;
+		for(j=0; j<E; j++)
+			if(x[j]==to_swap)
+				x[j] = i;
+			else if(x[j]==i)
+				x[j] = to_swap;
+		insert_TabuList(tl, (to_swap>i)?to_swap:i, (to_swap>i)?i:to_swap, 3);
+	}
+
 }
+
+
+/* unused: implemented functions but experimentally worse
+static int neighborhood1_bestFirst(int *x, int **n, int T, int E, TABU tl, int *group_position, int **group_conflict, int pen, double temperature) //O(T^3)
+{
+	int j, group1, group2, actual_pen;
+	double prob;
+
+	for (group1 = 0; group1 < T; group1++)
+		for (group2 = group1 + 1; group2 < T; group2++) {
+			if (check_TabuList(tl,
+					(group_position[group1] < group_position[group2]) ?
+							group_position[group1] : group_position[group2],
+							(group_position[group1] > group_position[group2]) ?
+									group_position[group1] : group_position[group2], 1))
+				continue; // timeslots group_position[group1] and group_position[group2] already swapped in the last moves (is referred to timeslot, not to group)
+
+			actual_pen = update_pen_groups(pen, group1, group2, group_position,
+					group_conflict, T); // compute how much the penalty would be if I swap group1 and group2
+
+			if (temperature != 0)
+				prob = pow(M_E,
+						-((double) (pen - actual_pen) / (pen * temperature)));
+			else
+				prob = INT_MAX;
+			if (actual_pen < pen || rand() / (double) RAND_MAX < prob) {
+				insert_TabuList(tl,
+						(group_position[group1] < group_position[group2]) ?
+								group_position[group1] : group_position[group2],
+								(group_position[group1] > group_position[group2]) ?
+										group_position[group1] : group_position[group2],
+										1);
+				for (j = 0; j < E; j++) // perform the move
+				{
+					if (x[j] == group_position[group1])
+						x[j] = group_position[group2];
+					else if (x[j] == group_position[group2])
+						x[j] = group_position[group1];
+				}
+				swap(group_position + group1, group_position + group2); // update group_position
+				return actual_pen;
+			}
+		}
+	return -1; // return the penalty
+}
+static int neighborhood1_random(int *x, int **n, int T, int E, TABU tl, int *group_position, int **group_conflict, int pen) // O(T)
+{
+	int j, group1, group2, actual_pen = -1, possible_group1,
+			possible_group2 = 0;
+	possible_group1 = group1 = rand() % T;
+	do {
+		group1 = (group1 + 1) % T;
+		possible_group2 = rand() % T;
+		for (group2 = possible_group2 + 1; group2 != possible_group2;
+				group2 = (group2 + 1) % T) {
+			if (group2 == group1
+					|| check_TabuList(tl,
+							(group_position[group1] < group_position[group2]) ?
+									group_position[group1] :
+									group_position[group2],
+									(group_position[group1] > group_position[group2]) ?
+											group_position[group1] :
+											group_position[group2], 1))
+				continue;
+			break;
+		}
+		if (group2 == possible_group2 || group2 == group1 || group2 == T)
+			continue;
+
+		actual_pen = update_pen_groups(pen, group1, group2, group_position,
+				group_conflict, T); // compute how much the penalty would be if I swap group1 and group2
+		insert_TabuList(tl,
+				(group_position[group1] < group_position[group2]) ?
+						group_position[group1] : group_position[group2],
+						(group_position[group1] > group_position[group2]) ?
+								group_position[group1] : group_position[group2], 1);
+		for (j = 0; j < E; j++) // perform the move
+		{
+			if (x[j] == group_position[group1])
+				x[j] = group_position[group2];
+			else if (x[j] == group_position[group2])
+				x[j] = group_position[group1];
+		}
+		swap(group_position + group1, group_position + group2); // update group_position
+		break;
+	} while (group1 != possible_group1);
+	if (group1 == possible_group1)
+		return -1;
+	return actual_pen; // return the penalty
+
+}
+static int neighborhood2_bestFirst(int *x, int **n, int T, int E, TABU tl, ExamPenalty *exam_penalty, int actual_pen, double temperature)
+{
+	int i, j, k, to_swap, pen;
+	double prob;
+	to_swap = -1;
+	k = to_swap = rand() % T;
+	while (1) {
+		to_swap = (to_swap + 1) % T;
+		for (i = 0; i < T; i++) {
+			for (j = 0; j < E; j++)
+				if (x[to_swap] == i || (x[j] == i && n[j][to_swap])
+						|| check_TabuList(tl, to_swap, i, 0))
+					break; // unfeasible swap or not allowed
+			if (j != E)
+				continue;
+
+			pen = update_penalty(x, n, E, actual_pen, to_swap, x[to_swap], i);
+
+			if (temperature != 0)
+				prob = pow(M_E,
+						-((double) (pen - actual_pen) / (pen * temperature)));
+			else
+				prob = INT_MAX;
+			if (actual_pen < pen || rand() / (double) RAND_MAX < prob) {
+				insert_TabuList(tl, to_swap, i, 0);
+				x[to_swap] = i;
+				return pen;
+			}
+		}
+		if (to_swap == k)
+			return actual_pen;
+	}
+	return pen;
+}
+static int neighborhood2_random(int *x, int **n, int T, int E, TABU tl, ExamPenalty *exam_penalty, int actual_pen) 
+{
+	int i, j, k, to_swap, pen;
+	to_swap = -1;
+	k = to_swap = rand() % E;
+	while (1) {
+		to_swap = (to_swap + 1) % E;
+		for (i = 0; i < T; i++) {
+			for (j = 0; j < E; j++)
+				if (x[to_swap] == i || (x[j] == i && n[j][to_swap])
+						|| check_TabuList(tl, to_swap, i, 0))
+					break; // unfeasible swap or not allowed
+			if (j != E)
+				continue;
+
+			pen = update_penalty(x, n, E, actual_pen, to_swap, x[to_swap], i);
+			insert_TabuList(tl, to_swap, i, 0);
+			x[to_swap] = i;
+			return pen;
+		}
+		if (to_swap == k)
+			return actual_pen;
+	}
+	return pen;
+}
+static double computeDistance(int *x1, int *x2, int **n, int E, int T) // O(E^2) DA OTTIMIZZARE !!!!!!!!!!!!!!!!!!!!!!!!! (es. se non uso il SINGLE_DIST)
+{
+	int i, j;
+	double dist = 0, dist_max;
+	dist_max = E * SINGLE_DIST + E * E * GROUP_DIST / 2;
+	for (i = 0; i < E; i++) {
+		if (x1[i] != x2[i])
+			dist += SINGLE_DIST;
+		for (j = i + 1; j < E; j++)
+			if (x1[i] == x1[j] && x1[i] != x2[j])
+				dist += GROUP_DIST;
+	}
+	return 100 * dist / dist_max;
+}
+static int destroySolution(int *x, int **n, int E, int T, int n_timeslot)
+{
+	int i, j, *x_old = malloc(E*sizeof(int));
+	int *timeslot = malloc(n_timeslot * sizeof(int)), *lookup_table = malloc(E * sizeof(int)), swapped = 0, *x_new, **n_new, *mark;
+	//double dist;
+	memcpy(x_old, x, E*sizeof(int));
+
+
+	for(i=0; i<n_timeslot; i++)
+	{
+		timeslot[i] = rand() % T;
+		for(j=0; j<i; j++)
+			if(timeslot[i] == timeslot[j])
+			{
+				timeslot[i] = (timeslot[i]+1) % T;
+				j = -1; // restart the loop to check again if there are same timeslot in the array
+			}
+	}
+
+	for(i=0; i<n_timeslot; i++)
+		for(j=0; j<E; j++)
+			if(x[j] == timeslot[i])
+			{
+				lookup_table[swapped] = j; //old exam j will be new exam swapped
+				swapped++;
+			}
+	x_new = malloc(swapped * sizeof(int));
+	n_new = malloc(swapped * sizeof(int*));
+	for(i=0; i<swapped; i++)
+	{
+		n_new[i] = malloc(swapped * sizeof(int));
+		for(j=0; j<swapped; j++)
+			n_new[i][j] = n[lookup_table[i]][lookup_table[j]];
+	}
+	printf("entro");
+	fflush(stdout);
+	initialization(x_new, n_new, swapped, n_timeslot);
+	printf("esco");
+	mark = calloc(swapped, sizeof(int));
+	for(i=0; i<n_timeslot; i++)
+		for(j=0; j<swapped;j++)
+			if(x_new[j] == i && !mark[j])
+			{
+				x_new[j] = timeslot[i]; // go back to old timeslot
+				mark[j] = 1; // specifies that x_new[j] has already been updated to old_timeslot
+			}
+
+	for(i=0; i<swapped; i++)
+		x[lookup_table[i]] = x_new[i]; // update the solution
+
+	free(mark);
+	free(x_new);
+	for(i=0; i<swapped; i++)
+		free(n_new[i]);
+	free(n_new);
+	free(x_old);
+	free(lookup_table);
+	free(timeslot);
+
+	//dist = computeDistance(x, x_old, n, E, T);
+	return compute_penalty_complete(x, n, E);
+}
+static int destroySolution_swapping(int *x, int **n, int E, int T, int pen, TABU tl, int *group_positions, int **group_conflicts, ExamPenalty *exam_penalty)
+{
+	double i, dist = 0, dist_old = -1;
+	int x_old[E];
+
+	memcpy(x_old, x, E*sizeof(int));
+	// randomly swapping single exams
+	neighborhood2_setup(x, n, T, E, exam_penalty);
+	for(counter = 0; counter < DESTROY_SINGLE; counter++)
+		pen = neighborhood2_random(x, n, T, E, tl, exam_penalty, pen);
+
+	if(pen != compute_penalty_complete(x, n, E))
+			{ fprintf(stdout, "Non va lo swap singolo\n"); exit(12345); }
+
+	// randomly swapping entire groups
+	neighborhood1_setup(x, n, T, E, group_positions, group_conflicts);
+	for(counter = 0; counter < DESTROY_GROUP; counter++)
+		pen = neighborhood1_random(x, n, T, E, tl, group_positions, group_conflicts, pen);
+	dist = computeDistance(x, x_old, n, E, T);
+	while(dist != -1) // while there is a single swap that increment the dist
+	{
+		dist_old = dist;
+		dist = neighborhood2_bestFirst_destroy(x, x_old, n, T, E, dist_old);
+	}
+
+	pen = compute_penalty_complete(x, n, E);
+	return pen;
+}
+static double neighborhood2_bestFirst_destroy(int *x, int *x_old, int **n, int T, int E, double actual_dist)
+{
+	int i, j, k, to_swap, old_timeslot;
+	double dist;
+
+	to_swap = -1;
+	k = to_swap = rand() % T;
+	while (1)
+	{
+		to_swap = (to_swap + 1) % T;
+		for (i = 0; i < T; i++)
+		{
+			for (j = 0; j < E; j++)
+				if (x[to_swap] == i || (x[j] == i && n[j][to_swap]))
+					break; // unfeasible swap or not allowed
+			if (j != E)
+				continue;
+
+			old_timeslot = x[to_swap];
+			x[to_swap] = i;
+			dist = computeDistance(x, x_old, n, E, T);
+			if (actual_dist < dist && fabs(dist-actual_dist) > 0.00000001)
+				return dist;
+			else
+				x[to_swap] = old_timeslot;
+		}
+		if (to_swap == k)
+			return -1;
+	}
+	return dist;
+}
+*/
