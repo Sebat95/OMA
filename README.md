@@ -9,4 +9,5 @@ Index of the repository:
 * _Read.me_ this file
 * _OMA_ directory with our solver
 * _Presentation_ PowerPoint presentation of our work
+* _ETPreport_OMAAL_group21_ more formal explanaiton of our work
 * _Assignment_Presentation_ assignment text & explanation
